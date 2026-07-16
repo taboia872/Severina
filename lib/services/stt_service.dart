@@ -7,8 +7,8 @@ class SttService {
 
   static Future<bool> init() async {
     _available = await _stt.initialize(
-      onError: (err) => print('STT error: $err'),
-      onStatus: (status) => print('STT status: $status'),
+      onError: (err) {},
+      onStatus: (status) {},
     );
     return _available;
   }
@@ -23,7 +23,7 @@ class SttService {
     await _stt.listen(
       onResult: (r) => onResult(r.recognizedWords, r.finalResult),
       localeId: 'pt-BR',
-      listenMode: stt.ListenMode.dictation,
+      listenOptions: stt.SpeechListenOptions(listenMode: stt.ListenMode.dictation),
     );
   }
 
