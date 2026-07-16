@@ -5,6 +5,20 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
+    plugins {
+        "com.android.application" {
+            id = "com.android.application"
+            version = "8.12.0"
+        }
+        "com.android.library" {
+            id = "com.android.library"
+            version = "8.12.0"
+        }
+        "org.jetbrains.kotlin.android" {
+            id = "org.jetbrains.kotlin.android"
+            version = "2.1.20"
+        }
+    }
 }
 
 plugins {
