@@ -1,2 +1,0 @@
--keep class com.facebook.react.** { *; }
--keep class com.severina.** { *; }
