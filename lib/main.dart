@@ -50,7 +50,7 @@ class _AppRouterState extends State<AppRouter> {
   }
 
   Future<void> _checkSetup() async {
-    final ready = await AppSettings.isConfigured();
+    final ready = await AppSettings.isConfiguredStatic();
     setState(() => _configured = ready);
   }
 
