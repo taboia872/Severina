@@ -91,10 +91,6 @@ class AppSettings {
 
   // --- persistência ---
 
-  Future<bool> isConfigured() async {
-    return false; // implementado abaixo
-  }
-
   static Future<bool> isConfiguredStatic() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_keyConfigured) ?? false;

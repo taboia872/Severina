@@ -5,7 +5,7 @@ import '../services/ai_service.dart';
 import '../services/tts_service.dart';
 import '../services/stt_service.dart';
 
-enum BmoState { idle, listening, thinking, speaking }
+enum SeverinaState { idle, listening, thinking, speaking }
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -14,7 +14,7 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  BmoState _state = BmoState.idle;
+  SeverinaState _state = SeverinaState.idle;
   String _lastHeard = '';
   String _lastResponse = '';
   final List<Map<String, String>> _conversation = [];
@@ -31,18 +31,18 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _toggleMic() async {
-    if (_state == BmoState.listening) {
+    if (_state == SeverinaState.listening) {
       await SttService.stop();
-      setState(() => _state = BmoState.idle);
+      setState(() => _state = SeverinaState.idle);
       return;
     }
 
-    if (_state == BmoState.speaking || _state == BmoState.thinking) {
+    if (_state == SeverinaState.speaking || _state == SeverinaState.thinking) {
       await TtsService.stop();
     }
 
     setState(() {
-      _state = BmoState.listening;
+      _state = SeverinaState.listening;
       _lastHeard = '';
     });
 
@@ -58,7 +58,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _processText(String userText) async {
-    setState(() => _state = BmoState.thinking);
+    setState(() => _state = SeverinaState.thinking);
 
     _conversation.add({'role': 'user', 'content': userText});
 
@@ -78,18 +78,18 @@ class _ChatScreenState extends State<ChatScreen> {
       _conversation.add({'role': 'assistant', 'content': clean});
       setState(() {
         _lastResponse = clean;
-        _state = BmoState.speaking;
+        _state = SeverinaState.speaking;
       });
 
       await TtsService.speak(
         clean,
-        onStart: () => setState(() => _state = BmoState.speaking),
-        onComplete: () => setState(() => _state = BmoState.idle),
+        onStart: () => setState(() => _state = SeverinaState.speaking),
+        onComplete: () => setState(() => _state = SeverinaState.idle),
       );
     } catch (e) {
       setState(() {
         _lastResponse = 'Deu erro: $e';
-        _state = BmoState.idle;
+        _state = SeverinaState.idle;
       });
     }
   }
@@ -153,12 +153,12 @@ class _ChatScreenState extends State<ChatScreen> {
                   height: 96,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: _state == BmoState.listening
+                    color: _state == SeverinaState.listening
                         ? Colors.red[400]
                         : s.primary,
                     boxShadow: [
                       BoxShadow(
-                        color: (_state == BmoState.listening
+                        color: (_state == SeverinaState.listening
                                 ? Colors.red[400]!
                                 : s.primary)
                             .withOpacity(0.3),
@@ -168,7 +168,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     ],
                   ),
                   child: Icon(
-                    _state == BmoState.listening ? Icons.mic : Icons.mic_none,
+                    _state == SeverinaState.listening ? Icons.mic : Icons.mic_none,
                     size: 48,
                     color: Colors.white,
                   ),
@@ -182,15 +182,15 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildFace(ColorScheme s) {
-    final eyeColor = _state == BmoState.thinking
+    final eyeColor = _state == SeverinaState.thinking
         ? Colors.amber
-        : _state == BmoState.speaking
+        : _state == SeverinaState.speaking
             ? Colors.green
-            : _state == BmoState.listening
+            : _state == SeverinaState.listening
                 ? Colors.red[300]!
                 : s.primary;
 
-    final mouthWidth = _state == BmoState.speaking ? 50.0 : 24.0;
+    final mouthWidth = _state == SeverinaState.speaking ? 50.0 : 24.0;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -209,7 +209,7 @@ class _ChatScreenState extends State<ChatScreen> {
         AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           width: mouthWidth,
-          height: _state == BmoState.speaking ? 12 : 6,
+          height: _state == SeverinaState.speaking ? 12 : 6,
           decoration: BoxDecoration(
             color: eyeColor,
             borderRadius: BorderRadius.circular(6),
@@ -223,7 +223,7 @@ class _ChatScreenState extends State<ChatScreen> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       width: 24,
-      height: _state == BmoState.thinking ? 4 : 24,
+      height: _state == SeverinaState.thinking ? 4 : 24,
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(12),
@@ -233,12 +233,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
   String _statusText() {
     return switch (_state) {
-      BmoState.idle => 'Toca no microfone para falar',
-      BmoState.listening => _lastHeard.isEmpty
+      SeverinaState.idle => 'Toca no microfone para falar',
+      SeverinaState.listening => _lastHeard.isEmpty
           ? 'Ouvindo...'
           : '"$_lastHeard"',
-      BmoState.thinking => 'Pensando...',
-      BmoState.speaking => _lastResponse,
+      SeverinaState.thinking => 'Pensando...',
+      SeverinaState.speaking => _lastResponse,
     };
   }
 }
