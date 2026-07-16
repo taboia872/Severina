@@ -40,7 +40,15 @@ jobs:
 
       - name: Build APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon -PnewArchEnabled=true --stacktrace 2>&1
+        run: ./gradlew assembleDebug --no-daemon -PnewArchEnabled=true --stacktrace --info 2>&1 | tee /tmp/build.log | tail -100
+
+      - name: Find APK files
+        if: always()
+        run: find . -name "*.apk" 2>/dev/null || echo "NO APK FOUND"
+
+      - name: Find build outputs
+        if: always()
+        run: find android/app/build -type f 2>/dev/null | head -20 || echo "NO BUILD OUTPUTS"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -48,3 +56,11 @@ jobs:
           name: severina-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: /tmp/build.log
+          if-no-files-found: warn
