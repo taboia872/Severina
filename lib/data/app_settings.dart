@@ -1,7 +1,25 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 /// Modelos de IA suportados (todos OpenAI-compat).
 enum AiProvider { openrouter, openaiCompat }
+
+/// Endpoints fixos por provedor — usuário não digita URL, só troca o toggle.
+class ProviderConfig {
+  final AiProvider provider;
+  final String label;
+  final String endpoint;
+  final String defaultModel;
+  final String hintApiKey;
+  const ProviderConfig({
+    required this.provider,
+    required this.label,
+    required this.endpoint,
+    required this.defaultModel,
+    required this.hintApiKey,
+  });
+}
 
 /// Presets de personalidade da Severina.
 class Preset {
@@ -28,6 +46,26 @@ class AppSettings {
   static const _keyAssistantName = 'assistantName';
   static const _keyTemperature = 'temperature';
   static const _keyMaxTokens = 'maxTokens';
+
+  static const providers = [
+    ProviderConfig(
+      provider: AiProvider.openrouter,
+      label: 'OpenRouter',
+      endpoint: 'https://openrouter.ai/api/v1/chat/completions',
+      defaultModel: 'meta-llama/llama-3.2-1b-instruct:free',
+      hintApiKey: 'Token do OpenRouter (openrouter.ai/keys)',
+    ),
+    ProviderConfig(
+      provider: AiProvider.openaiCompat,
+      label: 'OpenAI / Compatível',
+      endpoint: 'https://api.openai.com/v1/chat/completions',
+      defaultModel: 'gpt-4o-mini',
+      hintApiKey: 'API Key da OpenAI (ou provedor compatível)',
+    ),
+  ];
+
+  static ProviderConfig providerConfigFor(AiProvider p) =>
+      providers.firstWhere((pc) => pc.provider == p);
 
   static const presets = [
     Preset(
@@ -89,6 +127,45 @@ class AppSettings {
   Preset get currentPreset =>
       presets.firstWhere((p) => p.id == presetId, orElse: () => presets.last);
 
+  ProviderConfig get currentProviderConfig => providerConfigFor(provider);
+
+  /// Troca o provedor e auto-preenche endpoint + modelo default.
+  void switchProvider(AiProvider newProvider) {
+    provider = newProvider;
+    final pc = providerConfigFor(newProvider);
+    endpoint = pc.endpoint;
+    model = pc.defaultModel;
+  }
+
+  /// Busca modelos gratuitos do OpenRouter via API pública.
+  /// Retorna lista de {id, name} ou null se falhar.
+  static Future<List<MapEntry<String, String>>> fetchOpenRouterFreeModels(String apiKey) async {
+    try {
+      final res = await http.get(
+        Uri.parse('https://openrouter.ai/api/v1/models'),
+        headers: {'Authorization': 'Bearer $apiKey'},
+      ).timeout(const Duration(seconds: 15));
+      if (res.statusCode != 200) return [];
+      final data = jsonDecode(res.body);
+      final models = data['data'] as List;
+      final free = <MapEntry<String, String>>[];
+      for (final m in models) {
+        final id = m['id'] as String;
+        final pricing = m['pricing'] as Map?;
+        final promptPrice = pricing != null
+            ? double.tryParse(pricing['prompt']?.toString() ?? '1') ?? 1
+            : 1;
+        if (promptPrice == 0) {
+          free.add(MapEntry(id, m['name'] as String? ?? id));
+        }
+      }
+      free.sort((a, b) => a.value.compareTo(b.value));
+      return free;
+    } catch (_) {
+      return [];
+    }
+  }
+
   // --- persistência ---
 
   static Future<bool> isConfiguredStatic() async {
@@ -104,7 +181,7 @@ class AppSettings {
     apiKey = prefs.getString(_keyApiKey) ?? '';
     model = prefs.getString(_keyModel) ?? 'gpt-4o-mini';
     endpoint = prefs.getString(_keyEndpoint) ??
-        'https://api.openai.com/v1/chat/completions';
+        providerConfigFor(provider).endpoint;
     presetId = prefs.getString(_keyPreset) ?? 'original';
     systemPrompt = prefs.getString(_keySystemPrompt) ??
         presets.lastWhere((p) => p.id == presetId).prompt;

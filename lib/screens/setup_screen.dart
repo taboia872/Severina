@@ -9,10 +9,8 @@ class SetupScreen extends StatefulWidget {
 
 class _SetupScreenState extends State<SetupScreen> {
   final _apiKeyCtrl = TextEditingController();
-  final _endpointCtrl = TextEditingController(
-    text: 'https://api.openai.com/v1/chat/completions',
-  );
-  final _modelCtrl = TextEditingController(text: 'gpt-4o-mini');
+  final _modelCtrl = TextEditingController();
+  AiProvider _provider = AiProvider.openaiCompat;
   String _selectedPreset = 'original';
   bool _loading = false;
 
@@ -25,18 +23,28 @@ class _SetupScreenState extends State<SetupScreen> {
   Future<void> _loadCurrent() async {
     await AppSettings.I.load();
     _apiKeyCtrl.text = AppSettings.I.apiKey;
-    _endpointCtrl.text = AppSettings.I.endpoint;
     _modelCtrl.text = AppSettings.I.model;
+    _provider = AppSettings.I.provider;
     _selectedPreset = AppSettings.I.presetId;
     if (mounted) setState(() {});
+  }
+
+  void _switchProvider(AiProvider newProvider) {
+    setState(() {
+      _provider = newProvider;
+      final pc = AppSettings.providerConfigFor(newProvider);
+      _modelCtrl.text = pc.defaultModel;
+    });
   }
 
   Future<void> _save() async {
     setState(() => _loading = true);
     final s = AppSettings.I;
+    s.provider = _provider;
     s.apiKey = _apiKeyCtrl.text.trim();
-    s.endpoint = _endpointCtrl.text.trim();
     s.model = _modelCtrl.text.trim();
+    final pc = AppSettings.providerConfigFor(_provider);
+    s.endpoint = pc.endpoint;
     s.presetId = _selectedPreset;
     s.systemPrompt = AppSettings.presets
         .firstWhere((p) => p.id == _selectedPreset)
@@ -75,6 +83,22 @@ class _SetupScreenState extends State<SetupScreen> {
               ),
               const SizedBox(height: 32),
 
+              // --- Provedor ---
+              Text('Provedor da IA',
+                  style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 12),
+              SegmentedButton<AiProvider>(
+                segments: AppSettings.providers.map((pc) {
+                  return ButtonSegment(
+                    value: pc.provider,
+                    label: Text(pc.label),
+                  );
+                }).toList(),
+                selected: {_provider},
+                onSelectionChanged: (set) => _switchProvider(set.first),
+              ),
+              const SizedBox(height: 28),
+
               // --- Preset de personalidade ---
               Text('Personalidade',
                   style: Theme.of(context).textTheme.titleMedium),
@@ -103,27 +127,19 @@ class _SetupScreenState extends State<SetupScreen> {
               ),
               const SizedBox(height: 28),
 
-              // --- API Config ---
-              Text('Configuração da IA',
+              // --- API Key ---
+              Text('Configuração',
                   style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
               TextField(
                 controller: _apiKeyCtrl,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'API Key',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.key),
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.key),
+                  hintText: AppSettings.providerConfigFor(_provider).hintApiKey,
                 ),
                 obscureText: true,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _endpointCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Endpoint (OpenAI-compat)',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.link),
-                ),
               ),
               const SizedBox(height: 16),
               TextField(

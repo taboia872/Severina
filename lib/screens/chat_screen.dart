@@ -30,15 +30,15 @@ class _ChatScreenState extends State<ChatScreen> {
     await SttService.init();
   }
 
+  bool get _micEnabled => _state == SeverinaState.idle || _state == SeverinaState.listening;
+
   Future<void> _toggleMic() async {
+    if (!_micEnabled) return;
+
     if (_state == SeverinaState.listening) {
       await SttService.stop();
       setState(() => _state = SeverinaState.idle);
       return;
-    }
-
-    if (_state == SeverinaState.speaking || _state == SeverinaState.thinking) {
-      await TtsService.stop();
     }
 
     setState(() {
@@ -62,7 +62,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _conversation.add({'role': 'user', 'content': userText});
 
-    // mantém histórico curto (últimas 6 mensagens) + system prompt
     final history = _conversation.length > 6
         ? _conversation.sublist(_conversation.length - 6)
         : List<Map<String, String>>.from(_conversation);
@@ -147,30 +146,36 @@ class _ChatScreenState extends State<ChatScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
               child: GestureDetector(
-                onTap: _toggleMic,
-                child: Container(
-                  width: 96,
-                  height: 96,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _state == SeverinaState.listening
-                        ? Colors.red[400]
-                        : s.primary,
-                    boxShadow: [
-                      BoxShadow(
-                        color: (_state == SeverinaState.listening
-                                ? Colors.red[400]!
-                                : s.primary)
-                            .withOpacity(0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    _state == SeverinaState.listening ? Icons.mic : Icons.mic_none,
-                    size: 48,
-                    color: Colors.white,
+                onTap: _micEnabled ? _toggleMic : null,
+                child: AnimatedOpacity(
+                  opacity: _micEnabled ? 1.0 : 0.35,
+                  duration: const Duration(milliseconds: 250),
+                  child: Container(
+                    width: 96,
+                    height: 96,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _state == SeverinaState.listening
+                          ? Colors.red[400]
+                          : s.primary,
+                      boxShadow: _micEnabled
+                          ? [
+                              BoxShadow(
+                                color: (_state == SeverinaState.listening
+                                        ? Colors.red[400]!
+                                        : s.primary)
+                                    .withOpacity(0.3),
+                                blurRadius: 20,
+                                offset: const Offset(0, 4),
+                              ),
+                            ]
+                          : [],
+                    ),
+                    child: Icon(
+                      _state == SeverinaState.listening ? Icons.mic : Icons.mic_none,
+                      size: 48,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
