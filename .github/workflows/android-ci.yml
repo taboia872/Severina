@@ -24,8 +24,8 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Analyze (non-blocking)
-        run: flutter analyze || true
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
 
       - name: Build APK
         run: flutter build apk --debug
