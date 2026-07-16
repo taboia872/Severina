@@ -17,6 +17,6 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
 
 includeBuild("../node_modules/@react-native/gradle-plugin")
 
-include ":app"
+include(":app")
 
 rootProject.name = "Severina"

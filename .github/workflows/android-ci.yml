@@ -40,7 +40,7 @@ jobs:
 
       - name: Build APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon -PnewArchEnabled=true --stacktrace --info 2>&1 | tee /tmp/build.log | tail -100
+        run: ./gradlew assembleDebug --no-daemon -PnewArchEnabled=true --stacktrace --info 2>&1 | tee /tmp/build.log
 
       - name: Find APK files
         if: always()

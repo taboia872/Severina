@@ -1,12 +1,11 @@
 buildscript {
-    ext {
-        buildToolsVersion = "36.0.0"
-        minSdkVersion = 24
-        compileSdkVersion = 36
-        targetSdkVersion = 36
-        ndkVersion = "27.1.12297006"
-        kotlinVersion = "2.1.20"
-    }
+    extra["buildToolsVersion"] = "36.0.0"
+    extra["minSdkVersion"] = 24
+    extra["compileSdkVersion"] = 36
+    extra["targetSdkVersion"] = 36
+    extra["ndkVersion"] = "27.1.12297006"
+    extra["kotlinVersion"] = "2.1.20"
+    
     repositories {
         google()
         mavenCentral()
@@ -25,8 +24,8 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        maven { url "$rootDir/../node_modules/react-native/android" }
+        maven { url = uri("$rootDir/../node_modules/react-native/android") }
     }
 }
 
-apply plugin: "com.facebook.react.rootproject"
+apply(plugin = "com.facebook.react.rootproject")
