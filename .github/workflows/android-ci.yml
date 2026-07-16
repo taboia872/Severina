@@ -34,9 +34,13 @@ jobs:
             --bundle-output android/app/src/main/assets/index.android.bundle \
             --assets-dest android/app/src/main/res
 
+      - name: Debug available tasks
+        working-directory: android
+        run: ./gradlew tasks --all --no-daemon -PnewArchEnabled=true 2>&1 | head -100
+
       - name: Build APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon -PnewArchEnabled=true
+        run: ./gradlew assembleDebug --no-daemon -PnewArchEnabled=true --stacktrace 2>&1
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
