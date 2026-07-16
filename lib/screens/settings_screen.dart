@@ -153,10 +153,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               TextButton(
                 onPressed: () async {
                   await AppSettings.I.reset();
-                  if (mounted) {
-                    Navigator.pushNamedAndRemoveUntil(
-                        context, '/setup', (_) => false);
-                  }
+                  if (!mounted) return;
+                  Navigator.pushNamedAndRemoveUntil(
+                      context, '/setup', (_) => false);
                 },
                 child: const Text('Apagar tudo e reconfigurar',
                     style: TextStyle(color: Colors.red)),

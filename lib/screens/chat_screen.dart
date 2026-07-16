@@ -161,7 +161,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         color: (_state == SeverinaState.listening
                                 ? Colors.red[400]!
                                 : s.primary)
-                            .withOpacity(0.3),
+                            .withValues(opacity: 0.3),
                         blurRadius: 20,
                         offset: const Offset(0, 4),
                       ),
