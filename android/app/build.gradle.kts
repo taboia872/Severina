@@ -4,10 +4,6 @@ plugins {
     id("com.facebook.react")
 }
 
-extensions.configure<com.facebook.react.ReactExtension>("react") {
-    autolinkLibrariesWithApp()
-}
-
 android {
     ndkVersion = rootProject.extra["ndkVersion"] as String
     buildToolsVersion = rootProject.extra["buildToolsVersion"] as String
