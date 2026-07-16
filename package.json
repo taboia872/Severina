@@ -19,6 +19,7 @@
     "@react-native/metro-config": "^0.86.0",
     "@react-native/gradle-plugin": "^0.86.0",
     "@react-native-community/cli": "^15.0.0",
-    "@babel/core": "^7.25.0"
+    "@babel/core": "^7.25.0",
+    "@react-native-community/cli-platform-android": "15.0.0"
   }
 }
