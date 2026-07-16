@@ -1,8 +1,7 @@
-plugins {
-    id "com.android.application" version "8.12.0"
-    id "org.jetbrains.kotlin.android" version "2.1.20"
-    id "com.facebook.react"
-}
+println "=== SEVERINA APP BUILD GRADLE EVALUATED ==="
+apply plugin: "com.android.application"
+apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "com.facebook.react"
 
 react {
     autolinkLibrariesWithApp()

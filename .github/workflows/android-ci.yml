@@ -36,7 +36,7 @@ jobs:
 
       - name: Debug available tasks
         working-directory: android
-        run: ./gradlew tasks --all --no-daemon -PnewArchEnabled=true 2>&1 | head -100
+        run: ./gradlew tasks --all --no-daemon -PnewArchEnabled=true 2>&1 | head -200
 
       - name: Build APK
         working-directory: android
