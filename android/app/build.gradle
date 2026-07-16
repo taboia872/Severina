@@ -6,8 +6,6 @@ react {
     autolinkLibrariesWithApp()
 }
 
-def enableHermes = true
-
 android {
     ndkVersion rootProject.ext.ndkVersion
     compileSdkVersion rootProject.ext.compileSdkVersion
