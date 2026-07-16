@@ -9,44 +9,84 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _apiKey;
-  late TextEditingController _endpoint;
   late TextEditingController _model;
   late TextEditingController _name;
   late double _temp;
   late int _maxTokens;
   late String _presetId;
+  late AiProvider _provider;
+
+  bool _loadingModels = false;
+  List<MapEntry<String, String>> _freeModels = [];
 
   @override
   void initState() {
     super.initState();
     final s = AppSettings.I;
     _apiKey = TextEditingController(text: s.apiKey);
-    _endpoint = TextEditingController(text: s.endpoint);
     _model = TextEditingController(text: s.model);
     _name = TextEditingController(text: s.assistantName);
     _temp = s.temperature;
     _maxTokens = s.maxTokens;
     _presetId = s.presetId;
+    _provider = s.provider;
   }
 
   @override
   void dispose() {
     _apiKey.dispose();
-    _endpoint.dispose();
     _model.dispose();
     _name.dispose();
     super.dispose();
   }
 
+  void _switchProvider(AiProvider newProvider) {
+    setState(() {
+      _provider = newProvider;
+      final pc = AppSettings.providerConfigFor(newProvider);
+      _model.text = pc.defaultModel;
+    });
+  }
+
+  Future<void> _detectModels() async {
+    if (_provider != AiProvider.openrouter) return;
+    if (_apiKey.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Digite a API Key do OpenRouter primeiro')),
+      );
+      return;
+    }
+
+    setState(() => _loadingModels = true);
+
+    final models = await AppSettings.fetchOpenRouterFreeModels(_apiKey.text.trim());
+
+    setState(() {
+      _loadingModels = false;
+      _freeModels = models;
+    });
+
+    if (models.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não encontrei modelos gratuitos. Verifique a API Key.')),
+        );
+      }
+    }
+  }
+
   Future<void> _save() async {
     final s = AppSettings.I;
+    s.provider = _provider;
     s.apiKey = _apiKey.text.trim();
-    s.endpoint = _endpoint.text.trim();
     s.model = _model.text.trim();
     s.assistantName = _name.text.trim();
     s.temperature = _temp;
     s.maxTokens = _maxTokens;
     s.presetId = _presetId;
+    // endpoint é automático baseado no provider
+    final pc = AppSettings.providerConfigFor(_provider);
+    s.endpoint = pc.endpoint;
     s.systemPrompt =
         AppSettings.presets.firstWhere((p) => p.id == _presetId).prompt;
     await s.save();
@@ -55,6 +95,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Configurações')),
       body: SafeArea(
@@ -63,6 +105,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // === PROVEDOR ===
+              Text('Provedor da IA', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 12),
+              SegmentedButton<AiProvider>(
+                segments: AppSettings.providers.map((pc) {
+                  return ButtonSegment(
+                    value: pc.provider,
+                    label: Text(pc.label),
+                  );
+                }).toList(),
+                selected: {_provider},
+                onSelectionChanged: (set) => _switchProvider(set.first),
+              ),
+              const SizedBox(height: 24),
+
+              // === PERSONALIDADE ===
               Text('Personalidade', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
               Wrap(
@@ -79,6 +137,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 24),
 
+              // === API KEY ===
+              TextField(
+                controller: _apiKey,
+                decoration: InputDecoration(
+                  labelText: 'API Key',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.key),
+                  hintText: AppSettings.providerConfigFor(_provider).hintApiKey,
+                ),
+                obscureText: true,
+              ),
+              const SizedBox(height: 16),
+
+              // === MODELO ===
+              if (_provider == AiProvider.openrouter && _freeModels.isNotEmpty)
+                DropdownButtonFormField<String>(
+                  value: _model.text.isEmpty ? null : _model.text,
+                  decoration: const InputDecoration(
+                    labelText: 'Modelo (gratuito)',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.memory),
+                  ),
+                  items: _freeModels.map((m) {
+                    return DropdownMenuItem(
+                      value: m.key,
+                      child: Text(m.value, overflow: TextOverflow.ellipsis),
+                    );
+                  }).toList(),
+                  onChanged: (v) {
+                    if (v != null) setState(() => _model.text = v);
+                  },
+                )
+              else
+                TextField(
+                  controller: _model,
+                  decoration: const InputDecoration(
+                    labelText: 'Modelo',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.memory),
+                  ),
+                ),
+              if (_provider == AiProvider.openrouter) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _loadingModels ? null : _detectModels,
+                    icon: _loadingModels
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.search),
+                    label: Text(_loadingModels
+                        ? 'Buscando modelos...'
+                        : 'Detectar modelos gratuitos'),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+
+              // === NOME ===
               TextField(
                 controller: _name,
                 decoration: const InputDecoration(
@@ -86,39 +207,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
-              TextField(
-                controller: _apiKey,
-                decoration: const InputDecoration(
-                  labelText: 'API Key',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.key),
-                ),
-                obscureText: true,
-              ),
-              const SizedBox(height: 16),
-
-              TextField(
-                controller: _endpoint,
-                decoration: const InputDecoration(
-                  labelText: 'Endpoint',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.link),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              TextField(
-                controller: _model,
-                decoration: const InputDecoration(
-                  labelText: 'Modelo',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.memory),
-                ),
-              ),
-              const SizedBox(height: 16),
-
+              // === TEMPERATURA ===
               Text('Temperatura: ${_temp.toStringAsFixed(1)}',
                   style: Theme.of(context).textTheme.bodyMedium),
               Slider(
@@ -130,6 +221,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 8),
 
+              // === MAX TOKENS ===
               Text('Tokens máximos: $_maxTokens',
                   style: Theme.of(context).textTheme.bodyMedium),
               Slider(
@@ -141,6 +233,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 24),
 
+              // === SAVE ===
               FilledButton.icon(
                 onPressed: _save,
                 icon: const Icon(Icons.save),
