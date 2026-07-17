@@ -5,6 +5,7 @@ import '../data/app_settings.dart';
 import '../services/ai_service.dart';
 import '../services/tts_service.dart';
 import '../services/stt_service.dart';
+import '../widgets/severina_face.dart';
 
 enum SeverinaState { idle, listening, thinking, speaking }
 
@@ -222,53 +223,14 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildFace(ColorScheme s) {
-    final eyeColor = _state == SeverinaState.thinking
-        ? Colors.amber
-        : _state == SeverinaState.speaking
-            ? Colors.green
-            : _state == SeverinaState.listening
-                ? Colors.red[300]!
-                : s.primary;
+    final faceState = switch (_state) {
+      SeverinaState.idle => SeverinaFaceState.idle,
+      SeverinaState.listening => SeverinaFaceState.listening,
+      SeverinaState.thinking => SeverinaFaceState.thinking,
+      SeverinaState.speaking => SeverinaFaceState.speaking,
+    };
 
-    final mouthWidth = _state == SeverinaState.speaking ? 50.0 : 24.0;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Olhos
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _eye(eyeColor),
-            const SizedBox(width: 32),
-            _eye(eyeColor),
-          ],
-        ),
-        const SizedBox(height: 20),
-        // Boca
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          width: mouthWidth,
-          height: _state == SeverinaState.speaking ? 12 : 6,
-          decoration: BoxDecoration(
-            color: eyeColor,
-            borderRadius: BorderRadius.circular(6),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _eye(Color color) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      width: 24,
-      height: _state == SeverinaState.thinking ? 4 : 24,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(12),
-      ),
-    );
+    return SeverinaFace(state: faceState);
   }
 
   String _statusText() {
