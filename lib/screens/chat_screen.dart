@@ -165,10 +165,10 @@ class _ChatScreenState extends State<ChatScreen> {
             // --- Botão microfone (Press-To-Talk) ---
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-              child: GestureDetector(
-                onTapDown: _micEnabled ? (_) => _onMicDown() : null,
-                onTapUp: _micEnabled ? (_) => _onMicUp() : null,
-                onTapCancel: _micEnabled ? () => _onMicUp() : null,
+              child: Listener(
+                onPointerDown: _micEnabled ? (_) => _onMicDown() : null,
+                onPointerUp: _micEnabled ? (_) => _onMicUp() : null,
+                onPointerCancel: _micEnabled ? (_) => _onMicUp() : null,
                 child: AnimatedOpacity(
                   opacity: _micEnabled ? 1.0 : 0.35,
                   duration: const Duration(milliseconds: 250),
