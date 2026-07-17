@@ -18,6 +18,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   bool _loadingModels = false;
   List<MapEntry<String, String>> _freeModels = [];
+  String? _selectedModel;
 
   @override
   void initState() {
@@ -45,6 +46,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _provider = newProvider;
       final pc = AppSettings.providerConfigFor(newProvider);
       _model.text = pc.defaultModel;
+      _freeModels = [];
+      _selectedModel = null;
     });
   }
 
@@ -64,6 +67,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _loadingModels = false;
       _freeModels = models;
+      _selectedModel = models.any((m) => m.key == _model.text) ? _model.text : null;
     });
 
     if (models.isEmpty) {
@@ -152,7 +156,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // === MODELO ===
               if (_provider == AiProvider.openrouter && _freeModels.isNotEmpty)
                 DropdownButtonFormField<String>(
-                  value: _model.text.isEmpty ? null : _model.text,
+                  value: _selectedModel,
                   decoration: const InputDecoration(
                     labelText: 'Modelo (gratuito)',
                     border: OutlineInputBorder(),
@@ -165,7 +169,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     );
                   }).toList(),
                   onChanged: (v) {
-                    if (v != null) setState(() => _model.text = v);
+                    if (v != null) setState(() {
+                      _selectedModel = v;
+                      _model.text = v;
+                    });
                   },
                 )
               else

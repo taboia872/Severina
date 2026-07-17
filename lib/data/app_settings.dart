@@ -52,7 +52,7 @@ class AppSettings {
       provider: AiProvider.openrouter,
       label: 'OpenRouter',
       endpoint: 'https://openrouter.ai/api/v1/chat/completions',
-      defaultModel: 'meta-llama/llama-3.2-1b-instruct:free',
+      defaultModel: 'openrouter/free',
       hintApiKey: 'Token do OpenRouter (openrouter.ai/keys)',
     ),
     ProviderConfig(
@@ -149,17 +149,22 @@ class AppSettings {
       final data = jsonDecode(res.body);
       final models = data['data'] as List;
       final free = <MapEntry<String, String>>[];
+      final seen = <String>{};
       for (final m in models) {
         final id = m['id'] as String;
         final pricing = m['pricing'] as Map?;
-        final promptPrice = pricing != null
-            ? double.tryParse(pricing['prompt']?.toString() ?? '1') ?? 1
-            : 1;
-        if (promptPrice == 0) {
-          free.add(MapEntry(id, m['name'] as String? ?? id));
+        final promptStr = pricing?['prompt']?.toString() ?? '1';
+        final completionStr = pricing?['completion']?.toString() ?? '1';
+        final promptPrice = double.tryParse(promptStr) ?? 1;
+        final completionPrice = double.tryParse(completionStr) ?? 1;
+        final isFree = promptPrice == 0 && completionPrice == 0;
+        if (isFree && !seen.contains(id)) {
+          seen.add(id);
+          final name = m['name'] as String? ?? id;
+          free.add(MapEntry(id, name));
         }
       }
-      free.sort((a, b) => a.value.compareTo(b.value));
+      free.sort((a, b) => a.value.toLowerCase().compareTo(b.value.toLowerCase()));
       return free;
     } catch (_) {
       return [];
