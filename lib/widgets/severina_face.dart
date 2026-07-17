@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Face da Severina desenhada com CustomPainter.
+/// Face da Severina — robozinho estilo 🤖 via CustomPainter.
 /// Boca anima (abre/fecha) durante speaking.
 /// Olhos mudam de forma durante thinking.
 class SeverinaFace extends StatefulWidget {
@@ -23,22 +23,9 @@ class _SeverinaFaceState extends State<SeverinaFace>
   @override
   void initState() {
     super.initState();
-
-    _speakController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 150),
-    );
-
-    _blinkController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    );
-
-    _thinkController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-
+    _speakController = AnimationController(vsync: this, duration: const Duration(milliseconds: 150));
+    _blinkController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
+    _thinkController = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
     _blinkController.repeat(reverse: true);
   }
 
@@ -79,11 +66,12 @@ class _SeverinaFaceState extends State<SeverinaFace>
       builder: (context, _) {
         return CustomPaint(
           size: const Size(200, 200),
-          painter: _FacePainter(
+          painter: _RobotFacePainter(
             state: widget.state,
             speakProgress: _speakController.value,
             blinkProgress: _blinkController.value,
             thinkProgress: _thinkController.value,
+            accentColor: Theme.of(context).colorScheme.primary,
           ),
         );
       },
@@ -91,155 +79,178 @@ class _SeverinaFaceState extends State<SeverinaFace>
   }
 }
 
-class _FacePainter extends CustomPainter {
+class _RobotFacePainter extends CustomPainter {
   final SeverinaFaceState state;
   final double speakProgress;
   final double blinkProgress;
   final double thinkProgress;
+  final Color accentColor;
 
-  _FacePainter({
+  _RobotFacePainter({
     required this.state,
     required this.speakProgress,
     required this.blinkProgress,
     required this.thinkProgress,
+    required this.accentColor,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
+    final cx = size.width / 2;
+    final cy = size.height / 2;
 
-    // === Cores por estado ===
-    final eyeColor = switch (state) {
-      SeverinaFaceState.thinking => Colors.amber,
-      SeverinaFaceState.speaking => Colors.green,
-      SeverinaFaceState.listening => Colors.red[300]!,
-      SeverinaFaceState.idle => Colors.indigo,
-    };
+    // === Cores ===
+    final bodyColor = accentColor;
+    final faceColor = Colors.white;
+    final eyeColor = const Color(0xFF3C465A);
+    final mouthColor = const Color(0xFF3C465A);
 
-    final mouthColor = eyeColor;
+    // === Antena ===
+    final antenaX = cx;
+    final antenaTop = cy - 70;
+    final antenaBot = cy - 42;
+    final antenaPaint = Paint()
+      ..color = bodyColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(antenaX, antenaTop + 8), Offset(antenaX, antenaBot), antenaPaint);
+
+    // Bolinha da antena
+    final antenaBall = Paint()
+      ..color = _antennaBallColor()
+      ..style = PaintingStyle.fill;
+    final ballR = 7.0;
+    canvas.drawCircle(Offset(antenaX, antenaTop + 4), ballR, antenaBall);
+
+    // === Cabeça (retângulo arredondado) ===
+    final headW = 100.0;
+    final headH = 84.0;
+    final headLeft = cx - headW / 2;
+    final headTop = cy - 38;
+    final headRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(headLeft, headTop, headW, headH),
+      const Radius.circular(16),
+    );
+
+    // Corpo/cabeça beef color
+    final bodyPaint = Paint()
+      ..color = bodyColor
+      ..style = PaintingStyle.fill;
+    canvas.drawRRect(headRect, bodyPaint);
+
+    // Face interior (área branca)
+    final faceW = 84.0;
+    final faceH = 60.0;
+    final faceLeft = cx - faceW / 2;
+    final faceTop = cy - 28;
+    final faceRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(faceLeft, faceTop, faceW, faceH),
+      const Radius.circular(10),
+    );
+    final facePaint = Paint()
+      ..color = faceColor
+      ..style = PaintingStyle.fill;
+    canvas.drawRRect(faceRect, facePaint);
+
+    // "Orelhas" laterais (barbs do robô)
+    final earW = 6.0;
+    final earH = 34.0;
+    final earPaint = Paint()
+      ..color = bodyColor
+      ..style = PaintingStyle.fill;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(headLeft - earW, cy - earH / 2, earW, earH),
+        const Radius.circular(3),
+      ),
+      earPaint,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(headLeft + headW, cy - earH / 2, earW, earH),
+        const Radius.circular(3),
+      ),
+      earPaint,
+    );
 
     // === Olhos ===
-    final eyeRadius = 14.0;
-    final eyeY = center.dy - 20;
-    final leftEyeCenter = Offset(center.dx - 32, eyeY);
-    final rightEyeCenter = Offset(center.dx + 32, eyeY);
+    final eyeR = 8.0;
+    final eyeY = faceTop + 20;
+    final eyeOffset = 20.0;
+    final blinkAmt = (blinkProgress > 0.85) ? (1 - (blinkProgress - 0.85) / 0.15) : 1.0;
+    final eyeHeight = state == SeverinaFaceState.thinking
+        ? 0.2 + 0.15 * thinkProgress
+        : blinkAmt;
 
-    // Blink: quando blinkProgress > 0.85, olhos fecham
-    final blinkAmount = (blinkProgress > 0.85) ? (1 - (blinkProgress - 0.85) / 0.15) : 1.0;
-
-    // Thinking: olhos viram linha horizontal (piscar lento)
-    final eyeHeightFactor = state == SeverinaFaceState.thinking
-        ? 0.15 + 0.1 * (0.5 + 0.5 * thinkProgress)
-        : blinkAmount;
-
-    _drawEye(canvas, leftEyeCenter, eyeRadius, eyeHeightFactor, eyeColor);
-    _drawEye(canvas, rightEyeCenter, eyeRadius, eyeHeightFactor, eyeColor);
+    _drawEye(canvas, Offset(cx - eyeOffset, eyeY), eyeR, eyeHeight, eyeColor);
+    _drawEye(canvas, Offset(cx + eyeOffset, eyeY), eyeR, eyeHeight, eyeColor);
 
     // === Boca ===
-    final mouthY = center.dy + 30;
+    final mouthY = faceTop + faceH - 18;
 
     switch (state) {
       case SeverinaFaceState.speaking:
-        // Boca circular que pulsa (abre/fecha)
-        final mouthOpen = 8.0 + 18.0 * speakProgress;
-        _drawMouthSpeaking(canvas, Offset(center.dx, mouthY), mouthOpen, mouthColor);
+        final mouthOpen = 4.0 + 12.0 * speakProgress;
+        _drawMouthSpeaking(canvas, Offset(cx, mouthY), mouthOpen, mouthColor);
         break;
       case SeverinaFaceState.listening:
-        // Boca pequena, ligeiramente aberta (ouvindo)
-        _drawMouthOval(canvas, Offset(center.dx, mouthY), 14, 6, mouthColor);
+        _drawMouthOval(canvas, Offset(cx, mouthY), 12, 5, mouthColor);
         break;
       case SeverinaFaceState.thinking:
-        // Boca como pequena linha ondulada (pensando)
-        _drawMouthThinking(canvas, Offset(center.dx, mouthY), mouthColor, thinkProgress);
+        _drawMouthThinking(canvas, Offset(cx, mouthY), mouthColor, thinkProgress);
         break;
       case SeverinaFaceState.idle:
-        // Boca como linha suave (sorriso discreto)
-        _drawMouthSmile(canvas, Offset(center.dx, mouthY), 20, mouthColor);
+        _drawMouthSmile(canvas, Offset(cx, mouthY), 16, mouthColor);
         break;
     }
   }
 
+  Color _antennaBallColor() {
+    return switch (state) {
+      SeverinaFaceState.thinking => Colors.amber,
+      SeverinaFaceState.speaking => Colors.green,
+      SeverinaFaceState.listening => Colors.red[300]!,
+      SeverinaFaceState.idle => Colors.white,
+    };
+  }
+
   void _drawEye(Canvas canvas, Offset center, double radius, double heightFactor, Color color) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    final eyeRect = Rect.fromCenter(
-      center: center,
-      width: radius * 2,
-      height: radius * 2 * heightFactor.clamp(0.05, 1.0),
-    );
-
-    canvas.drawOval(eyeRect, paint);
+    final paint = Paint()..color = color..style = PaintingStyle.fill;
+    final h = radius * 2 * heightFactor.clamp(0.05, 1.0);
+    canvas.drawOval(Rect.fromCenter(center: center, width: radius * 2, height: h), paint);
   }
 
   void _drawMouthSpeaking(Canvas canvas, Offset center, double radius, Color color) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    // Elipse vertical que pulsa
-    canvas.drawOval(
-      Rect.fromCenter(center: center, width: radius * 1.5, height: radius * 1.8),
-      paint,
-    );
-
-    // Interior escuro (boca aberta)
-    final innerPaint = Paint()
-      ..color = Colors.black54
-      ..style = PaintingStyle.fill;
-    canvas.drawOval(
-      Rect.fromCenter(center: center, width: radius * 0.8, height: radius * 1.2),
-      innerPaint,
-    );
+    final paint = Paint()..color = color..style = PaintingStyle.fill;
+    canvas.drawOval(Rect.fromCenter(center: center, width: radius * 1.4, height: radius * 1.6), paint);
+    final inner = Paint()..color = Colors.black54..style = PaintingStyle.fill;
+    canvas.drawOval(Rect.fromCenter(center: center, width: radius * 0.7, height: radius * 1.0), inner);
   }
 
   void _drawMouthOval(Canvas canvas, Offset center, double w, double h, Color color) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
+    final paint = Paint()..color = color..style = PaintingStyle.fill;
     canvas.drawOval(Rect.fromCenter(center: center, width: w, height: h), paint);
   }
 
   void _drawMouthSmile(Canvas canvas, Offset center, double width, Color color) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0
-      ..strokeCap = StrokeCap.round;
-
-    final rect = Rect.fromCenter(
-      center: Offset(center.dx, center.dy - 4),
-      width: width,
-      height: width * 0.6,
+    final paint = Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = 3.0..strokeCap = StrokeCap.round;
+    canvas.drawArc(
+      Rect.fromCenter(center: Offset(center.dx, center.dy - 3), width: width, height: width * 0.6),
+      0.2, 2.5, false, paint,
     );
-
-    canvas.drawArc(rect, 0.2, 2.5, false, paint);
   }
 
   void _drawMouthThinking(Canvas canvas, Offset center, Color color, double progress) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0
-      ..strokeCap = StrokeCap.round;
-
-    // Pequena linha ondulada
+    final paint = Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = 3.0..strokeCap = StrokeCap.round;
     final wave = 3.0 * progress;
     final path = Path();
-    path.moveTo(center.dx - 15, center.dy);
-    path.quadraticBezierTo(
-      center.dx - 5, center.dy - wave,
-      center.dx, center.dy,
-    );
-    path.quadraticBezierTo(
-      center.dx + 5, center.dy + wave,
-      center.dx + 15, center.dy,
-    );
-
+    path.moveTo(center.dx - 12, center.dy);
+    path.quadraticBezierTo(center.dx - 4, center.dy - wave, center.dx, center.dy);
+    path.quadraticBezierTo(center.dx + 4, center.dy + wave, center.dx + 12, center.dy);
     canvas.drawPath(path, paint);
   }
 
   @override
-  bool shouldRepaint(_FacePainter oldDelegate) => true;
+  bool shouldRepaint(_RobotFacePainter oldDelegate) => true;
 }
