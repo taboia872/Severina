@@ -14,11 +14,18 @@ class AiService {
       'Authorization': 'Bearer ${s.apiKey}',
     };
 
+    // OpenRouter headers extras (opcional, mas evita 403)
+    if (s.provider == AiProvider.openrouter) {
+      headers['HTTP-Referer'] = 'https://github.com/taboia872/Severina';
+      headers['X-Title'] = 'Severina';
+    }
+
     final body = jsonEncode({
       'model': s.model,
       'messages': messages,
       'temperature': s.temperature,
       'max_tokens': s.maxTokens,
+      'stream': false,
     });
 
     final res = await http.post(
@@ -28,7 +35,7 @@ class AiService {
     ).timeout(const Duration(seconds: 30));
 
     if (res.statusCode != 200) {
-      throw Exception('API retornou ${res.statusCode}: ${res.body}');
+      throw Exception('API ${res.statusCode}: ${res.body.substring(0, res.body.length > 200 ? 200 : res.body.length)}');
     }
 
     final data = jsonDecode(res.body);
