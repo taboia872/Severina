@@ -122,6 +122,17 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  void _resetSession() {
+    TtsService.stop();
+    setState(() {
+      _conversation.clear();
+      _partialText = '';
+      _lastHeard = '';
+      _lastResponse = '';
+      _state = SeverinaState.idle;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = Theme.of(context).colorScheme;
@@ -171,49 +182,63 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
 
-            // --- Botão microfone (Press-To-Talk) ---
+            // --- Botão lixeira (reset sessão) + Botão microfone ---
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-              child: Listener(
-                onPointerDown: (_) => _onMicDown(),
-                onPointerUp: (_) => _onMicUp(),
-                onPointerCancel: (_) => _onMicUp(),
-                child: AbsorbPointer(
-                  absorbing: _state != SeverinaState.idle && _state != SeverinaState.listening,
-                  child: AnimatedOpacity(
-                  opacity: _micEnabled ? 1.0 : 0.35,
-                  duration: const Duration(milliseconds: 250),
-                  child: Container(
-                    width: 96,
-                    height: 96,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _state == SeverinaState.listening
-                          ? Colors.red[400]
-                          : s.primary,
-                      boxShadow: _micEnabled
-                          ? [
-                              BoxShadow(
-                                color: (_state == SeverinaState.listening
-                                        ? Colors.red[400]!
-                                        : s.primary)
-                                    .withOpacity(0.3),
-                                blurRadius: 20,
-                                offset: const Offset(0, 4),
-                              ),
-                            ]
-                          : [],
-                    ),
-                    child: Icon(
-                      _state == SeverinaState.listening
-                          ? Icons.mic
-                          : Icons.mic_none,
-                      size: 48,
-                      color: Colors.white,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  // Lixeira
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 22),
+                    color: Colors.grey[500],
+                    tooltip: 'Limpar conversa',
+                    onPressed: _state == SeverinaState.idle ? _resetSession : null,
+                  ),
+                  const Spacer(),
+                  // Microfone (PTT)
+                  Listener(
+                    onPointerDown: (_) => _onMicDown(),
+                    onPointerUp: (_) => _onMicUp(),
+                    onPointerCancel: (_) => _onMicUp(),
+                    child: AbsorbPointer(
+                      absorbing: _state != SeverinaState.idle && _state != SeverinaState.listening,
+                      child: AnimatedOpacity(
+                        opacity: _micEnabled ? 1.0 : 0.35,
+                        duration: const Duration(milliseconds: 250),
+                        child: Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _state == SeverinaState.listening
+                                ? Colors.red[400]
+                                : s.primary,
+                            boxShadow: _micEnabled
+                                ? [
+                                    BoxShadow(
+                                      color: (_state == SeverinaState.listening
+                                              ? Colors.red[400]!
+                                              : s.primary)
+                                          .withOpacity(0.3),
+                                      blurRadius: 16,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ]
+                                : [],
+                          ),
+                          child: Icon(
+                            _state == SeverinaState.listening
+                                ? Icons.mic
+                                : Icons.mic_none,
+                            size: 36,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                  ),
-                ),
+                ],
               ),
             ),
           ],
