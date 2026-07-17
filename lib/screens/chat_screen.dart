@@ -37,7 +37,7 @@ class _ChatScreenState extends State<ChatScreen> {
   // === Press-To-Talk ===
 
   Future<void> _onMicDown() async {
-    if (!_micEnabled) return;
+    if (_state != SeverinaState.idle) return;
 
     setState(() {
       _state = SeverinaState.listening;
@@ -60,6 +60,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _onMicUp() async {
     if (_state != SeverinaState.listening) return;
+    //stt stop
 
     await SttService.stopListening();
     final text = _partialText.trim();
