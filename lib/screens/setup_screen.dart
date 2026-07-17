@@ -10,7 +10,7 @@ class SetupScreen extends StatefulWidget {
 class _SetupScreenState extends State<SetupScreen> {
   final _apiKeyCtrl = TextEditingController();
   final _modelCtrl = TextEditingController();
-  AiProvider _provider = AiProvider.openaiCompat;
+  AiProvider _provider = AiProvider.openrouter;
   String _selectedPreset = 'original';
   bool _loading = false;
 
@@ -87,15 +87,18 @@ class _SetupScreenState extends State<SetupScreen> {
               Text('Provedor da IA',
                   style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
-              SegmentedButton<AiProvider>(
-                segments: AppSettings.providers.map((pc) {
-                  return ButtonSegment(
+              Column(
+                children: AppSettings.providers.map((pc) {
+                  return RadioListTile<AiProvider>(
                     value: pc.provider,
-                    label: Text(pc.label),
+                    groupValue: _provider,
+                    title: Text(pc.label),
+                    subtitle: Text(pc.endpoint, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                    onChanged: (v) => _switchProvider(v!),
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
                   );
                 }).toList(),
-                selected: {_provider},
-                onSelectionChanged: (set) => _switchProvider(set.first),
               ),
               const SizedBox(height: 28),
 

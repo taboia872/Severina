@@ -116,10 +116,10 @@ class AppSettings {
   ];
 
   // --- estado em memória ---
-  AiProvider provider = AiProvider.openaiCompat;
+  AiProvider provider = AiProvider.openrouter;
   String apiKey = '';
-  String model = 'gpt-4o-mini';
-  String endpoint = 'https://api.openai.com/v1/chat/completions';
+  String model = 'openrouter/free';
+  String endpoint = 'https://openrouter.ai/api/v1/chat/completions';
   String presetId = 'original';
   String systemPrompt = '';
   String assistantName = 'Severina';
@@ -184,7 +184,7 @@ class AppSettings {
     switch (s) {
       case 'openrouter': return AiProvider.openrouter;
       case 'local': return AiProvider.local;
-      default: return AiProvider.openaiCompat;
+      default: return AiProvider.openrouter;
     }
   }
 
@@ -197,7 +197,7 @@ class AppSettings {
     final prefs = await SharedPreferences.getInstance();
     provider = _parseProvider(prefs.getString(_keyProvider));
     apiKey = prefs.getString(_keyApiKey) ?? '';
-    model = prefs.getString(_keyModel) ?? 'gpt-4o-mini';
+    model = prefs.getString(_keyModel) ?? 'openrouter/free';
     endpoint = prefs.getString(_keyEndpoint) ??
         providerConfigFor(provider).endpoint;
     presetId = prefs.getString(_keyPreset) ?? 'original';

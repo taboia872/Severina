@@ -60,20 +60,23 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _onMicUp() async {
     if (_state != SeverinaState.listening) return;
-    //stt stop
 
     await SttService.stopListening();
+
+    // Pequeno delay para garantir que o último callback onResult chegue
+    await Future.delayed(const Duration(milliseconds: 300));
+
     final text = _partialText.trim();
 
     if (text.isNotEmpty) {
-      _processText(text);
+      await _processText(text);
     } else {
-      setState(() => _state = SeverinaState.idle);
+      if (mounted) setState(() => _state = SeverinaState.idle);
     }
   }
 
   Future<void> _processText(String userText) async {
-    setState(() => _state = SeverinaState.thinking);
+    if (mounted) setState(() => _state = SeverinaState.thinking);
 
     _conversation.add({'role': 'user', 'content': userText});
 
@@ -92,14 +95,16 @@ class _ChatScreenState extends State<ChatScreen> {
       _conversation.add({'role': 'assistant', 'content': clean});
 
       if (clean.isEmpty) {
-        setState(() => _state = SeverinaState.idle);
+        if (mounted) setState(() => _state = SeverinaState.idle);
         return;
       }
 
-      setState(() {
-        _lastResponse = clean;
-        _state = SeverinaState.speaking;
-      });
+      if (mounted) {
+        setState(() {
+          _lastResponse = clean;
+          _state = SeverinaState.speaking;
+        });
+      }
 
       await TtsService.speak(
         clean,
@@ -107,10 +112,12 @@ class _ChatScreenState extends State<ChatScreen> {
         onComplete: () => setState(() => _state = SeverinaState.idle),
       );
     } catch (e) {
-      setState(() {
-        _lastResponse = 'Erro: $e';
-        _state = SeverinaState.idle;
-      });
+      if (mounted) {
+        setState(() {
+          _lastResponse = 'Erro: $e';
+          _state = SeverinaState.idle;
+        });
+      }
     }
   }
 
@@ -167,10 +174,12 @@ class _ChatScreenState extends State<ChatScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
               child: Listener(
-                onPointerDown: _micEnabled ? (_) => _onMicDown() : null,
-                onPointerUp: _micEnabled ? (_) => _onMicUp() : null,
-                onPointerCancel: _micEnabled ? (_) => _onMicUp() : null,
-                child: AnimatedOpacity(
+                onPointerDown: (_) => _onMicDown(),
+                onPointerUp: (_) => _onMicUp(),
+                onPointerCancel: (_) => _onMicUp(),
+                child: AbsorbPointer(
+                  absorbing: _state != SeverinaState.idle && _state != SeverinaState.listening,
+                  child: AnimatedOpacity(
                   opacity: _micEnabled ? 1.0 : 0.35,
                   duration: const Duration(milliseconds: 250),
                   child: Container(
@@ -201,6 +210,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       size: 48,
                       color: Colors.white,
                     ),
+                  ),
                   ),
                 ),
               ),
