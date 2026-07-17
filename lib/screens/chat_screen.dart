@@ -19,6 +19,7 @@ class _ChatScreenState extends State<ChatScreen> {
   String _lastHeard = '';
   String _lastResponse = '';
   final List<Map<String, String>> _conversation = [];
+  String _partialText = '';
 
   @override
   void initState() {
@@ -31,38 +32,43 @@ class _ChatScreenState extends State<ChatScreen> {
     await SttService.init();
   }
 
-  bool get _micEnabled => _state == SeverinaState.idle || _state == SeverinaState.listening;
+  bool get _micEnabled => _state == SeverinaState.idle;
 
-  Future<void> _toggleMic() async {
+  // === Press-To-Talk ===
+
+  Future<void> _onMicDown() async {
     if (!_micEnabled) return;
-
-    if (_state == SeverinaState.listening) {
-      await SttService.stop();
-      setState(() => _state = SeverinaState.idle);
-      return;
-    }
 
     setState(() {
       _state = SeverinaState.listening;
       _lastHeard = '';
+      _partialText = '';
     });
 
-    await SttService.listen(
+    await SttService.startListening(
       onResult: (text, isFinal) {
         if (text.isEmpty) return;
-        setState(() => _lastHeard = text);
-        if (isFinal && text.trim().isNotEmpty) {
-          SttService.stop();
-          _processText(text.trim());
-        }
-      },
-      onTimeout: () {
-        // Escutou mas nada veio — volta a idle
-        if (_state == SeverinaState.listening) {
-          setState(() => _state = SeverinaState.idle);
+        if (mounted) {
+          setState(() {
+            _partialText = text;
+            _lastHeard = text;
+          });
         }
       },
     );
+  }
+
+  Future<void> _onMicUp() async {
+    if (_state != SeverinaState.listening) return;
+
+    await SttService.stopListening();
+    final text = _partialText.trim();
+
+    if (text.isNotEmpty) {
+      _processText(text);
+    } else {
+      setState(() => _state = SeverinaState.idle);
+    }
   }
 
   Future<void> _processText(String userText) async {
@@ -156,11 +162,13 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
 
-            // --- Botão microfone ---
+            // --- Botão microfone (Press-To-Talk) ---
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
               child: GestureDetector(
-                onTap: _micEnabled ? _toggleMic : null,
+                onTapDown: _micEnabled ? (_) => _onMicDown() : null,
+                onTapUp: _micEnabled ? (_) => _onMicUp() : null,
+                onTapCancel: _micEnabled ? () => _onMicUp() : null,
                 child: AnimatedOpacity(
                   opacity: _micEnabled ? 1.0 : 0.35,
                   duration: const Duration(milliseconds: 250),
@@ -186,7 +194,9 @@ class _ChatScreenState extends State<ChatScreen> {
                           : [],
                     ),
                     child: Icon(
-                      _state == SeverinaState.listening ? Icons.mic : Icons.mic_none,
+                      _state == SeverinaState.listening
+                          ? Icons.mic
+                          : Icons.mic_none,
                       size: 48,
                       color: Colors.white,
                     ),
@@ -252,7 +262,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   String _statusText() {
     return switch (_state) {
-      SeverinaState.idle => 'Toca no microfone para falar',
+      SeverinaState.idle => 'Segure o botão para falar',
       SeverinaState.listening => _lastHeard.isEmpty
           ? 'Ouvindo...'
           : '"$_lastHeard"',
