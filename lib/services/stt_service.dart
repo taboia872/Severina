@@ -45,7 +45,6 @@ class SttService {
       localeId: 'pt-BR',
       listenOptions: stt.SpeechListenOptions(
         listenMode: stt.ListenMode.dictation,
-        autoStop: true,
       ),
     );
 
