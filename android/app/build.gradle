@@ -12,8 +12,13 @@ if (localPropertiesFile.exists()) {
     }
 }
 
-def flutterVersionCode = localProperties.getProperty("flutter.versionCode") ?: "1"
+def flutterVersionCode = localProperties.getProperty("flutter.versionCode")
 def flutterVersionName = localProperties.getProperty("flutter.versionName") ?: "0.1.0"
+
+// Auto-increment versionCode usando timestamp (API level do commit)
+if (flutterVersionCode == null) {
+    flutterVersionCode = new Date().format("yyMMddHH").toInteger()
+}
 
 android {
     namespace "com.severina"
