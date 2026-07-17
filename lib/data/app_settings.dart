@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 /// Modelos de IA suportados (todos OpenAI-compat).
-enum AiProvider { openrouter, openaiCompat }
+enum AiProvider { openrouter, openaiCompat, local }
 
 /// Endpoints fixos por provedor — usuário não digita URL, só troca o toggle.
 class ProviderConfig {
@@ -49,18 +49,25 @@ class AppSettings {
 
   static const providers = [
     ProviderConfig(
+      provider: AiProvider.local,
+      label: 'Local',
+      endpoint: 'http://localhost:8080/v1/chat/completions',
+      defaultModel: 'local-model',
+      hintApiKey: 'Não precisa (servidor local)',
+    ),
+    ProviderConfig(
       provider: AiProvider.openrouter,
-      label: 'OpenRouter',
+      label: 'Router',
       endpoint: 'https://openrouter.ai/api/v1/chat/completions',
       defaultModel: 'openrouter/free',
       hintApiKey: 'Token do OpenRouter (openrouter.ai/keys)',
     ),
     ProviderConfig(
       provider: AiProvider.openaiCompat,
-      label: 'OpenAI / Compatível',
+      label: 'GPT',
       endpoint: 'https://api.openai.com/v1/chat/completions',
       defaultModel: 'gpt-4o-mini',
-      hintApiKey: 'API Key da OpenAI (ou provedor compatível)',
+      hintApiKey: 'API Key da OpenAI',
     ),
   ];
 
@@ -173,6 +180,14 @@ class AppSettings {
 
   // --- persistência ---
 
+  static AiProvider _parseProvider(String? s) {
+    switch (s) {
+      case 'openrouter': return AiProvider.openrouter;
+      case 'local': return AiProvider.local;
+      default: return AiProvider.openaiCompat;
+    }
+  }
+
   static Future<bool> isConfiguredStatic() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_keyConfigured) ?? false;
@@ -180,9 +195,7 @@ class AppSettings {
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
-    provider = (prefs.getString(_keyProvider) == 'openrouter')
-        ? AiProvider.openrouter
-        : AiProvider.openaiCompat;
+    provider = _parseProvider(prefs.getString(_keyProvider));
     apiKey = prefs.getString(_keyApiKey) ?? '';
     model = prefs.getString(_keyModel) ?? 'gpt-4o-mini';
     endpoint = prefs.getString(_keyEndpoint) ??
@@ -198,8 +211,7 @@ class AppSettings {
   Future<void> save() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyConfigured, true);
-    await prefs.setString(_keyProvider,
-        provider == AiProvider.openrouter ? 'openrouter' : 'openaiCompat');
+    await prefs.setString(_keyProvider, provider.name);
     await prefs.setString(_keyApiKey, apiKey);
     await prefs.setString(_keyModel, model);
     await prefs.setString(_keyEndpoint, endpoint);

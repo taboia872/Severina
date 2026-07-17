@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../data/app_settings.dart';
@@ -51,7 +52,14 @@ class _ChatScreenState extends State<ChatScreen> {
         if (text.isEmpty) return;
         setState(() => _lastHeard = text);
         if (isFinal && text.trim().isNotEmpty) {
+          SttService.stop();
           _processText(text.trim());
+        }
+      },
+      onTimeout: () {
+        // Escutou mas nada veio — volta a idle
+        if (_state == SeverinaState.listening) {
+          setState(() => _state = SeverinaState.idle);
         }
       },
     );
@@ -75,6 +83,12 @@ class _ChatScreenState extends State<ChatScreen> {
       final response = await AiService.chat(messages: messages);
       final clean = response.trim();
       _conversation.add({'role': 'assistant', 'content': clean});
+
+      if (clean.isEmpty) {
+        setState(() => _state = SeverinaState.idle);
+        return;
+      }
+
       setState(() {
         _lastResponse = clean;
         _state = SeverinaState.speaking;
@@ -87,7 +101,7 @@ class _ChatScreenState extends State<ChatScreen> {
       );
     } catch (e) {
       setState(() {
-        _lastResponse = 'Deu erro: $e';
+        _lastResponse = 'Erro: $e';
         _state = SeverinaState.idle;
       });
     }
