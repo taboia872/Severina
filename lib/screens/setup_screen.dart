@@ -8,10 +8,8 @@ class SetupScreen extends StatefulWidget {
 }
 
 class _SetupScreenState extends State<SetupScreen> {
-  final _apiKeyCtrl = TextEditingController();
   final _modelCtrl = TextEditingController();
-  AiProvider _provider = AiProvider.openrouter;
-  String _selectedPreset = 'original';
+  AiProvider _provider = AiProvider.gemini;
   bool _loading = false;
 
   @override
@@ -22,10 +20,8 @@ class _SetupScreenState extends State<SetupScreen> {
 
   Future<void> _loadCurrent() async {
     await AppSettings.I.load();
-    _apiKeyCtrl.text = AppSettings.I.apiKey;
     _modelCtrl.text = AppSettings.I.model;
     _provider = AppSettings.I.provider;
-    _selectedPreset = AppSettings.I.presetId;
     if (mounted) setState(() {});
   }
 
@@ -41,14 +37,8 @@ class _SetupScreenState extends State<SetupScreen> {
     setState(() => _loading = true);
     final s = AppSettings.I;
     s.provider = _provider;
-    s.apiKey = _apiKeyCtrl.text.trim();
     s.model = _modelCtrl.text.trim();
-    final pc = AppSettings.providerConfigFor(_provider);
-    s.endpoint = pc.endpoint;
-    s.presetId = _selectedPreset;
-    s.systemPrompt = AppSettings.presets
-        .firstWhere((p) => p.id == _selectedPreset)
-        .prompt;
+    s.systemPrompt = AppSettings.defaultSystemPrompt;
     await s.save();
     if (mounted) {
       Navigator.pushReplacementNamed(context, '/chat');
@@ -93,7 +83,7 @@ class _SetupScreenState extends State<SetupScreen> {
                     value: pc.provider,
                     groupValue: _provider,
                     title: Text(pc.label),
-                    subtitle: Text(pc.endpoint, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                    subtitle: Text(pc.hintApiKey, style: const TextStyle(fontSize: 11, color: Colors.grey)),
                     onChanged: (v) => _switchProvider(v!),
                     dense: true,
                     contentPadding: EdgeInsets.zero,
@@ -102,67 +92,47 @@ class _SetupScreenState extends State<SetupScreen> {
               ),
               const SizedBox(height: 28),
 
-              // --- Preset de personalidade ---
-              Text('Personalidade',
+              // --- Modelo ---
+              Text('Modelo',
                   style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: AppSettings.presets.map((p) {
-                  final selected = p.id == _selectedPreset;
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedPreset = p.id),
-                    child: Chip(
-                      label: Text('${p.emoji} ${p.name}'),
-                      backgroundColor: selected
-                          ? Theme.of(context).colorScheme.primaryContainer
-                          : null,
-                      side: BorderSide(
-                        color: selected
-                            ? Theme.of(context).colorScheme.primary
-                            : Colors.grey[300]!,
-                        width: selected ? 2 : 1,
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 28),
-
-              // --- API Key ---
-              Text('Configuração',
-                  style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _apiKeyCtrl,
-                decoration: InputDecoration(
-                  labelText: 'API Key',
-                  border: const OutlineInputBorder(),
-                  prefixIcon: const Icon(Icons.key),
-                  hintText: AppSettings.providerConfigFor(_provider).hintApiKey,
-                ),
-                obscureText: true,
-              ),
-              const SizedBox(height: 16),
               TextField(
                 controller: _modelCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Modelo',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.memory),
+                decoration: InputDecoration(
+                  labelText: 'Nome do modelo',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.memory),
+                  hintText: AppSettings.providerConfigFor(_provider).defaultModel,
                 ),
               ),
+              const SizedBox(height: 16),
+
+              // --- Aviso sobre API Key ---
+              if (_provider != AiProvider.local)
+                Card(
+                  color: Colors.blue[50],
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info, color: Colors.blue, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Cadastre sua API Key em Configurações → Chaves de API',
+                            style: TextStyle(fontSize: 13, color: Colors.blue[800]),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               const SizedBox(height: 40),
 
               FilledButton.icon(
                 onPressed: _loading ? null : _save,
                 icon: _loading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.check),
                 label: const Padding(
                   padding: EdgeInsets.all(16),
