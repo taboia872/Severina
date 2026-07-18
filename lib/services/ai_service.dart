@@ -4,7 +4,7 @@ import '../data/app_settings.dart';
 
 class AiService {
   /// Envia a conversa para a API do provedor ativo e retorna a resposta em texto.
-  /// Suporta Gemini (formato contents) e OpenRouter/Local (formato OpenAI messages).
+  /// Suporta Gemini (formato contents) e OpenRouter (formato OpenAI messages).
   static Future<String> chat({
     required List<Map<String, String>> messages,
   }) async {
@@ -80,7 +80,7 @@ class AiService {
     return _stripThinkTags(text);
   }
 
-  /// OpenAI-compatible (OpenRouter, Local) — formato chat/completions.
+  /// OpenAI-compatible (OpenRouter) — formato chat/completions.
   static Future<String> _chatOpenAICompat(
     List<Map<String, String>> messages,
     AppSettings s,
@@ -103,9 +103,7 @@ class AiService {
       'stream': false,
     });
 
-    final endpoint = s.provider == AiProvider.local
-        ? '${s.currentProviderConfig.baseUrl}/chat/completions'
-        : '${s.currentProviderConfig.baseUrl}/chat/completions';
+    final endpoint = '${s.currentProviderConfig.baseUrl}/chat/completions';
 
     final res = await http.post(
       Uri.parse(endpoint),

@@ -5,7 +5,7 @@ import '../data/app_settings.dart';
 import '../services/ai_service.dart';
 import '../services/tts_service.dart';
 import '../services/stt_service.dart';
-import '../widgets/severina_face.dart';
+import '../widgets/severina_scene.dart';
 
 enum SeverinaState { idle, listening, thinking, speaking }
 
@@ -21,6 +21,7 @@ class _ChatScreenState extends State<ChatScreen> {
   String _lastResponse = '';
   final List<Map<String, String>> _conversation = [];
   String _partialText = '';
+  bool _loaded = false;
 
   @override
   void initState() {
@@ -31,6 +32,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _initServices() async {
     await AppSettings.I.load();
     await SttService.init();
+    if (mounted) setState(() => _loaded = true);
   }
 
   bool get _micEnabled => _state == SeverinaState.idle;
@@ -163,11 +165,9 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
 
-            // --- Visual central: rostinho da Severina ---
+            // --- Visual central: cenário + robozinho da Severina ---
             Expanded(
-              child: Center(
-                child: _buildFace(s),
-              ),
+              child: _loaded ? _buildScene() : const Center(child: CircularProgressIndicator()),
             ),
 
             // --- Status text ---
@@ -247,7 +247,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildFace(ColorScheme s) {
+  Widget _buildScene() {
     final faceState = switch (_state) {
       SeverinaState.idle => SeverinaFaceState.idle,
       SeverinaState.listening => SeverinaFaceState.listening,
@@ -255,7 +255,7 @@ class _ChatScreenState extends State<ChatScreen> {
       SeverinaState.speaking => SeverinaFaceState.speaking,
     };
 
-    return SeverinaFace(state: faceState);
+    return SeverinaScene(state: faceState);
   }
 
   String _statusText() {
