@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 
 import '../data/app_settings.dart';
@@ -159,14 +158,8 @@ class _ChatScreenState extends State<ChatScreen> {
             right: 0,
             child: SafeArea(
               bottom: false,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  bottom: Radius.circular(16),
-                ),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.45),
+              child: Container(
+                color: Colors.transparent,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Row(
                       children: [
@@ -218,14 +211,8 @@ class _ChatScreenState extends State<ChatScreen> {
             right: 0,
             child: SafeArea(
               top: false,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(16),
-                ),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.45),
+              child: Container(
+                color: Colors.transparent,
                     padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
