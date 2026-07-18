@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data/app_settings.dart';
 import 'severina_face.dart';
+export 'severina_face.dart' show SeverinaFaceState;
 
 /// Cenário completo da Severina:
 /// - Fundo (cenario trocavel)
