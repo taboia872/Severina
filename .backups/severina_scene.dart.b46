@@ -48,9 +48,9 @@ class SeverinaScene extends StatelessWidget {
 
             // 3) Cabeça (CustomPainter) — sobreposta no topo do corpo
             Positioned(
-              left: screenW * 0.28,
-              right: screenW * 0.28,
-              top: screenH * 0.02,
+              left: screenW * 0.32,
+              right: screenW * 0.32,
+              top: screenH * 0.08,
               child: SeverinaFace(state: state),
             ),
           ],

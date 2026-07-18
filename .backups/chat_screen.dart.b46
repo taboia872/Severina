@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 
 import '../data/app_settings.dart';
@@ -144,34 +143,25 @@ class _ChatScreenState extends State<ChatScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // --- AppBar minimal (vidro) ---
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                bottom: Radius.circular(16),
-              ),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(
-                  color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.45),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      Text(
-                        AppSettings.I.assistantName,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: s.primary,
-                            ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.settings),
-                        onPressed: () =>
-                            Navigator.pushNamed(context, '/settings'),
-                      ),
-                    ],
+            // --- AppBar minimal ---
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  Text(
+                    AppSettings.I.assistantName,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: s.primary,
+                        ),
                   ),
-                ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.settings),
+                    onPressed: () =>
+                        Navigator.pushNamed(context, '/settings'),
+                  ),
+                ],
               ),
             ),
 
@@ -192,28 +182,20 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
 
-            // --- Botão lixeira + Microfone (vidro) ---
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
-              ),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(
-                  color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.45),
-                  child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      // Lixeira
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 22),
-                        color: Colors.grey[500],
-                        tooltip: 'Limpar conversa',
-                        onPressed: _state == SeverinaState.idle ? _resetSession : null,
-                      ),
-                      const Spacer(),
+            // --- Botão lixeira (reset sessão) + Botão microfone ---
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  // Lixeira
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 22),
+                    color: Colors.grey[500],
+                    tooltip: 'Limpar conversa',
+                    onPressed: _state == SeverinaState.idle ? _resetSession : null,
+                  ),
+                  const Spacer(),
                   // Microfone (PTT)
                   Listener(
                     onPointerDown: (_) => _onMicDown(),
@@ -257,9 +239,6 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   ),
                 ],
-              ),
-            ),
-                ),
               ),
             ),
           ],

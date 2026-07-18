@@ -21,7 +21,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Slots de API key
   List<ApiKeySlot> _slots = [];
   String _activeSlotId = '';
-  String _selectedSceneId = 'toy_room';
 
   @override
   void initState() {
@@ -33,7 +32,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _maxTokens = s.maxTokens;
     _provider = s.provider;
     _activeSlotId = s.activeSlotId;
-    _selectedSceneId = s.activeSceneId;
     _loadSlots();
   }
 
@@ -123,7 +121,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     s.temperature = _temp;
     s.maxTokens = _maxTokens;
     s.activeSlotId = _activeSlotId;
-    s.activeSceneId = _selectedSceneId;
     // Atualiza apiKey do slot ativo
     final slot = _slots.where((sl) => sl.id == _activeSlotId).firstOrNull;
     if (slot != null) s.apiKey = slot.key;
@@ -256,27 +253,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   labelText: 'Nome da assistente',
                   border: OutlineInputBorder(),
                 ),
-              ),
-              const SizedBox(height: 24),
-
-              // === CENARIO ===
-              Text('Cenário de fundo', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _selectedSceneId,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.image),
-                ),
-                items: AppSettings.scenes.map((sc) {
-                  return DropdownMenuItem(
-                    value: sc.id,
-                    child: Text(sc.name),
-                  );
-                }).toList(),
-                onChanged: (v) {
-                  if (v != null) setState(() => _selectedSceneId = v);
-                },
               ),
               const SizedBox(height: 24),
 
