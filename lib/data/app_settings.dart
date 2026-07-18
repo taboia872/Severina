@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 /// Provedores de IA suportados.
-enum AiProvider { gemini, openrouter, local }
+enum AiProvider { gemini, openrouter }
 
 /// Configuração fixa por provedor.
 class ProviderConfig {
@@ -21,6 +21,14 @@ class ProviderConfig {
   });
 }
 
+/// Cenário de fundo do app.
+class SceneConfig {
+  final String id;
+  final String name;
+  final String file;
+  const SceneConfig({required this.id, required this.name, required this.file});
+}
+
 /// "Espaço" de API key — permite salvar múltiplas chaves com nomes amigáveis.
 class ApiKeySlot {
   final String id;
@@ -30,6 +38,13 @@ class ApiKeySlot {
 }
 
 class AppSettings {
+  /// Cenário de fundo trocável.
+  static const scenes = [
+    SceneConfig(id: 'toy_room', name: 'Quarto de Brinquedos', file: 'assets/scenes/toy_room.jpg'),
+    SceneConfig(id: 'yard', name: 'Quintal', file: 'assets/scenes/yard.jpg'),
+    SceneConfig(id: 'library', name: 'Biblioteca', file: 'assets/scenes/library.jpg'),
+  ];
+
   static const _keyConfigured = 'configured';
   static const _keyProvider = 'provider';
   static const _keyModel = 'model';
@@ -38,6 +53,7 @@ class AppSettings {
   static const _keyTemperature = 'temperature';
   static const _keyMaxTokens = 'maxTokens';
   static const _keyActiveSlot = 'activeSlot';
+  static const _keyActiveScene = 'activeScene';
 
   // Prefixo pra salvar múltiplas API keys: slot_<id> = jsonEncodo(label+key)
   static const _slotPrefix = 'slot_';
@@ -56,13 +72,6 @@ class AppSettings {
       defaultModel: 'openrouter/free',
       hintApiKey: 'Token do OpenRouter (openrouter.ai/keys)',
       baseUrl: 'https://openrouter.ai/api/v1',
-    ),
-    ProviderConfig(
-      provider: AiProvider.local,
-      label: 'Local',
-      defaultModel: 'local-model',
-      hintApiKey: 'Não precisa (servidor local)',
-      baseUrl: 'http://localhost:8080/v1',
     ),
   ];
 
@@ -112,6 +121,10 @@ Regras obrigatórias:
   double temperature = 0.9;
   int maxTokens = 150;
   String activeSlotId = '';
+  String activeSceneId = 'toy_room';
+
+  SceneConfig get activeScene =>
+      scenes.firstWhere((s) => s.id == activeSceneId, orElse: () => scenes.first);
 
   static AppSettings? _instance;
   static AppSettings get I => _instance ??= AppSettings._();
@@ -229,7 +242,6 @@ Regras obrigatórias:
   static AiProvider _parseProvider(String? s) {
     switch (s) {
       case 'openrouter': return AiProvider.openrouter;
-      case 'local': return AiProvider.local;
       default: return AiProvider.gemini;
     }
   }
@@ -248,6 +260,7 @@ Regras obrigatórias:
     temperature = prefs.getDouble(_keyTemperature) ?? 0.9;
     maxTokens = prefs.getInt(_keyMaxTokens) ?? 150;
     activeSlotId = prefs.getString(_keyActiveSlot) ?? '';
+    activeSceneId = prefs.getString(_keyActiveScene) ?? 'toy_room';
 
     // Carrega a API key do slot ativo
     if (activeSlotId.isNotEmpty) {
@@ -275,6 +288,7 @@ Regras obrigatórias:
     if (activeSlotId.isNotEmpty) {
       await prefs.setString(_keyActiveSlot, activeSlotId);
     }
+    await prefs.setString(_keyActiveScene, activeSceneId);
   }
 
   Future<void> reset() async {

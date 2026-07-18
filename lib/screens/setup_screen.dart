@@ -108,7 +108,6 @@ class _SetupScreenState extends State<SetupScreen> {
               const SizedBox(height: 16),
 
               // --- Aviso sobre API Key ---
-              if (_provider != AiProvider.local)
                 Card(
                   color: Colors.blue[50],
                   child: Padding(

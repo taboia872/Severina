@@ -228,7 +228,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ? 'gemini-2.0-flash'
                         : _provider == AiProvider.openrouter
                             ? 'openrouter/free'
-                            : 'local-model',
+                            : 'openrouter',
                   ),
                 ),
               if (showModelDetect) ...[
