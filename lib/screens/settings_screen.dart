@@ -9,7 +9,6 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _model;
-  late TextEditingController _name;
   late double _temp;
   late int _maxTokens;
   late AiProvider _provider;
@@ -28,7 +27,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     final s = AppSettings.I;
     _model = TextEditingController(text: s.model);
-    _name = TextEditingController(text: s.assistantName);
     _temp = s.temperature;
     _maxTokens = s.maxTokens;
     _provider = s.provider;
@@ -40,7 +38,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void dispose() {
     _model.dispose();
-    _name.dispose();
     super.dispose();
   }
 
@@ -119,7 +116,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final s = AppSettings.I;
     s.provider = _provider;
     s.model = _model.text.trim();
-    s.assistantName = _name.text.trim();
     s.temperature = _temp;
     s.maxTokens = _maxTokens;
     s.activeSlotId = _activeSlotId;
@@ -247,16 +243,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ],
-              const SizedBox(height: 24),
-
-              // === NOME ===
-              TextField(
-                controller: _name,
-                decoration: const InputDecoration(
-                  labelText: 'Nome da assistente',
-                  border: OutlineInputBorder(),
-                ),
-              ),
               const SizedBox(height: 24),
 
               // === CENARIO ===

@@ -141,132 +141,155 @@ class _ChatScreenState extends State<ChatScreen> {
     final s = Theme.of(context).colorScheme;
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // --- AppBar minimal (vidro) ---
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                bottom: Radius.circular(16),
-              ),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(
-                  color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.45),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      Text(
-                        AppSettings.I.assistantName,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: s.primary,
-                            ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.settings),
-                        onPressed: () =>
-                            Navigator.pushNamed(context, '/settings'),
-                      ),
-                    ],
+      extendBody: true,
+      extendBodyBehindAppBar: true,
+      body: Stack(
+        children: [
+          // === Cenário de fundo cobrindo TODA a tela ===
+          Positioned.fill(
+            child: _loaded
+                ? _buildScene()
+                : const Center(child: CircularProgressIndicator()),
+          ),
+
+          // === AppBar minimal (vidro, flutuante no topo) ===
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              bottom: false,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(16),
+                ),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.45),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      children: [
+                        Text(
+                          AppSettings.I.assistantName,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: s.primary,
+                              ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.settings),
+                          onPressed: () async {
+                            await Navigator.pushNamed(context, '/settings');
+                            // Recarrega settings ao voltar (bug do seletor de cenário)
+                            if (mounted) {
+                              await AppSettings.I.load();
+                              setState(() {});
+                            }
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
+          ),
 
-            // --- Visual central: cenário + robozinho da Severina ---
-            Expanded(
-              child: _loaded ? _buildScene() : const Center(child: CircularProgressIndicator()),
+          // === Status text (centralizado) ===
+          Positioned(
+            left: 24,
+            right: 24,
+            bottom: 120,
+            child: Text(
+              _statusText(),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Colors.grey[800],
+                  ),
             ),
+          ),
 
-            // --- Status text ---
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                _statusText(),
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Colors.grey[600],
-                    ),
-              ),
-            ),
-
-            // --- Botão lixeira + Microfone (vidro) ---
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
-              ),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(
-                  color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.45),
-                  child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      // Lixeira
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 22),
-                        color: Colors.grey[500],
-                        tooltip: 'Limpar conversa',
-                        onPressed: _state == SeverinaState.idle ? _resetSession : null,
-                      ),
-                      const Spacer(),
-                  // Microfone (PTT)
-                  Listener(
-                    onPointerDown: (_) => _onMicDown(),
-                    onPointerUp: (_) => _onMicUp(),
-                    onPointerCancel: (_) => _onMicUp(),
-                    child: AbsorbPointer(
-                      absorbing: _state != SeverinaState.idle && _state != SeverinaState.listening,
-                      child: AnimatedOpacity(
-                        opacity: _micEnabled ? 1.0 : 0.35,
-                        duration: const Duration(milliseconds: 250),
-                        child: Container(
-                          width: 72,
-                          height: 72,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _state == SeverinaState.listening
-                                ? Colors.red[400]
-                                : s.primary,
-                            boxShadow: _micEnabled
-                                ? [
-                                    BoxShadow(
-                                      color: (_state == SeverinaState.listening
-                                              ? Colors.red[400]!
-                                              : s.primary)
-                                          .withOpacity(0.3),
-                                      blurRadius: 16,
-                                      offset: const Offset(0, 3),
-                                    ),
-                                  ]
-                                : [],
-                          ),
-                          child: Icon(
-                            _state == SeverinaState.listening
-                                ? Icons.mic
-                                : Icons.mic_none,
-                            size: 36,
-                            color: Colors.white,
+          // === Botão lixeira + Microfone (vidro, flutuante embaixo) ===
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              top: false,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.45),
+                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 22),
+                          color: Colors.grey[700],
+                          tooltip: 'Limpar conversa',
+                          onPressed: _state == SeverinaState.idle ? _resetSession : null,
+                        ),
+                        const Spacer(),
+                        Listener(
+                          onPointerDown: (_) => _onMicDown(),
+                          onPointerUp: (_) => _onMicUp(),
+                          onPointerCancel: (_) => _onMicUp(),
+                          child: AbsorbPointer(
+                            absorbing: _state != SeverinaState.idle && _state != SeverinaState.listening,
+                            child: AnimatedOpacity(
+                              opacity: _micEnabled ? 1.0 : 0.35,
+                              duration: const Duration(milliseconds: 250),
+                              child: Container(
+                                width: 72,
+                                height: 72,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: _state == SeverinaState.listening
+                                      ? Colors.red[400]
+                                      : s.primary,
+                                  boxShadow: _micEnabled
+                                      ? [
+                                          BoxShadow(
+                                            color: (_state == SeverinaState.listening
+                                                    ? Colors.red[400]!
+                                                    : s.primary)
+                                                .withOpacity(0.3),
+                                            blurRadius: 16,
+                                            offset: const Offset(0, 3),
+                                          ),
+                                        ]
+                                      : [],
+                                ),
+                                child: Icon(
+                                  _state == SeverinaState.listening
+                                      ? Icons.mic
+                                      : Icons.mic_none,
+                                  size: 36,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
+
 
   Widget _buildScene() {
     final faceState = switch (_state) {
