@@ -185,9 +185,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       ],
                     ),
                   ),
-                ),
               ),
-            ),
           ),
 
           // === Status text (centralizado) ===
@@ -268,9 +266,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       ],
                     ),
                   ),
-                ),
               ),
-            ),
           ),
         ],
       ),
