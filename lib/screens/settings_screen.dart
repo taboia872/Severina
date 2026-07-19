@@ -183,6 +183,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.vpn_key),
                     ),
+                    menuMaxHeight: MediaQuery.of(context).size.height * 0.6,
+                    isExpanded: true,
                     items: _slots.map((s) {
                       return DropdownMenuItem(
                         value: s.id,
@@ -203,6 +205,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     border: const OutlineInputBorder(),
                     prefixIcon: const Icon(Icons.memory),
                   ),
+                  menuMaxHeight: MediaQuery.of(context).size.height * 0.6,
+                  isExpanded: true,
                   items: _models.map((m) {
                     return DropdownMenuItem(
                       value: m.key,
@@ -254,6 +258,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.image),
                 ),
+                menuMaxHeight: MediaQuery.of(context).size.height * 0.6,
+                isExpanded: true,
                 items: AppSettings.scenes.map((sc) {
                   return DropdownMenuItem(
                     value: sc.id,
@@ -342,50 +348,77 @@ class _SlotManagerSheetState extends State<_SlotManagerSheet> {
     final hint = widget.provider == AiProvider.gemini
         ? 'Ex: Gemini Principal, Gemini Trabalho'
         : 'Ex: OpenRouter Free, OpenRouter Pessoal';
-
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(isEdit ? 'Editar chave' : 'Nova chave'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              decoration: InputDecoration(
-                labelText: 'Nome',
-                border: const OutlineInputBorder(),
-                hintText: hint,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: keyCtrl,
-              decoration: const InputDecoration(
-                labelText: 'API Key',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.key),
-              ),
-              obscureText: true,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
-          FilledButton(
-            onPressed: () async {
-              final label = nameCtrl.text.trim();
-              final key = keyCtrl.text.trim();
-              if (label.isEmpty || key.isEmpty) return;
-              final id = existing?.id ??
-                  DateTime.now().millisecondsSinceEpoch.toString();
-              await AppSettings.saveSlot(id, label, key);
-              if (ctx.mounted) Navigator.pop(ctx);
-              widget.onSaved();
-            },
-            child: const Text('Salvar'),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Align(
+        alignment: Alignment.bottomCenter,
+        child: Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).size.height * 0.10,
+            left: 16,
+            right: 16,
           ),
-        ],
+          child: Material(
+            elevation: 8,
+            borderRadius: BorderRadius.circular(16),
+            color: Theme.of(ctx).colorScheme.surface,
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(isEdit ? 'Editar chave' : 'Nova chave',
+                      style: Theme.of(ctx).textTheme.titleLarge),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Nome',
+                      border: const OutlineInputBorder(),
+                      hintText: hint,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: keyCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'API Key',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.key),
+                    ),
+                    obscureText: true,
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Cancelar')),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: () async {
+                          final label = nameCtrl.text.trim();
+                          final key = keyCtrl.text.trim();
+                          if (label.isEmpty || key.isEmpty) return;
+                          final id = existing?.id ??
+                              DateTime.now().millisecondsSinceEpoch.toString();
+                          await AppSettings.saveSlot(id, label, key);
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          widget.onSaved();
+                        },
+                        child: const Text('Salvar'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
