@@ -105,14 +105,21 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) {
         setState(() {
           _lastResponse = clean;
-          _state = SeverinaState.speaking;
+          // Continua 'thinking' ate o audio comecar de fato.
+          _state = SeverinaState.thinking;
         });
       }
 
       await TtsService.speak(
         clean,
-        onStart: () => setState(() => _state = SeverinaState.speaking),
-        onComplete: () => setState(() => _state = SeverinaState.idle),
+        onStart: () async {
+          // Atraso de 1s para sincronizar a animacao com o audio real.
+          await Future.delayed(const Duration(seconds: 1));
+          if (mounted) setState(() => _state = SeverinaState.speaking);
+        },
+        onComplete: () {
+          if (mounted) setState(() => _state = SeverinaState.idle);
+        },
       );
     } catch (e) {
       if (mounted) {

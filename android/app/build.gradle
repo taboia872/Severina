@@ -42,9 +42,21 @@ android {
         versionName flutterVersionName
     }
 
-    buildTypes {
+    signingConfigs {
         release {
-            signingConfig signingConfigs.debug
+            keyAlias 'severina'
+            keyPassword 'severina2026'
+            storeFile file('severina.keystore')
+            storePassword 'severina2026'
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.release
+        }
+        release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             shrinkResources false
         }
