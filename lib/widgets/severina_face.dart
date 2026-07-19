@@ -222,10 +222,42 @@ class _RobotFacePainter extends CustomPainter {
   }
 
   void _drawMouthSpeaking(Canvas canvas, Offset center, double radius, Color color) {
-    final paint = Paint()..color = color..style = PaintingStyle.fill;
-    canvas.drawOval(Rect.fromCenter(center: center, width: radius * 1.4, height: radius * 1.6), paint);
+    // Boca em meia lua (D deitado) apontando pra baixo.
+    // Expande apenas pra baixo (maxilar desce) conforme speakProgress.
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final halfW = radius * 1.0;
+    final maxDrop = radius * 0.8;
+    final drop = maxDrop * (radius - 4.0) / 12.0; // escala com mouthOpen
+
+    // Arco superior (linha reta na parte de cima) + curva embaixo
+    final path = Path();
+    path.moveTo(center.dx - halfW, center.dy);
+    // Lado esquerdo desce
+    path.quadraticBezierTo(
+      center.dx, center.dy + drop,
+      center.dx + halfW, center.dy,
+    );
+    // Linha de topo (fecha a boca)
+    path.lineTo(center.dx - halfW, center.dy);
+    path.close();
+    canvas.drawPath(path, paint);
+
+    // Interior escuro (expande pra baixo junto)
     final inner = Paint()..color = Colors.black54..style = PaintingStyle.fill;
-    canvas.drawOval(Rect.fromCenter(center: center, width: radius * 0.7, height: radius * 1.0), inner);
+    final innerPath = Path();
+    final innerDrop = drop * 0.7;
+    final innerHalfW = halfW * 0.8;
+    innerPath.moveTo(center.dx - innerHalfW, center.dy);
+    innerPath.quadraticBezierTo(
+      center.dx, center.dy + innerDrop,
+      center.dx + innerHalfW, center.dy,
+    );
+    innerPath.lineTo(center.dx - innerHalfW, center.dy);
+    innerPath.close();
+    canvas.drawPath(innerPath, inner);
   }
 
   void _drawMouthOval(Canvas canvas, Offset center, double w, double h, Color color) {
