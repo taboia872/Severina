@@ -67,6 +67,13 @@ class SeverinaApp extends StatelessWidget {
           brightness: Brightness.light,
         ),
         useMaterial3: true,
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            // Material 3: fade + slide sutil (efeito 'fadeForwards')
+            TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+            TargetPlatform.iOS: FadeForwardsPageTransitionsBuilder(),
+          },
+        ),
       ),
       home: const _FullscreenKeeper(child: AppRouter()),
       routes: {
