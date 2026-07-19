@@ -177,7 +177,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: TextStyle(color: Colors.grey[600], fontSize: 13))
                 else
                   DropdownButtonFormField<String>(
-                    value: _slots.any((s) => s.id == _activeSlotId) ? _activeSlotId : null,
+
+                    menuMaxHeight: MediaQuery.of(context).size.height * 0.6,
+                    isExpanded: true,                    value: _slots.any((s) => s.id == _activeSlotId) ? _activeSlotId : null,
                     decoration: const InputDecoration(
                       labelText: 'Chave ativa',
                       border: OutlineInputBorder(),
@@ -197,7 +199,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // === MODELO ===
               if (_models.isNotEmpty)
                 DropdownButtonFormField<String>(
-                  value: _selectedModel,
+
+                    menuMaxHeight: MediaQuery.of(context).size.height * 0.6,
+                    isExpanded: true,                  value: _selectedModel,
                   decoration: InputDecoration(
                     labelText: _provider == AiProvider.gemini ? 'Modelo Gemini' : 'Modelo (gratuito)',
                     border: const OutlineInputBorder(),
@@ -249,7 +253,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Text('Cenário de fundo', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _selectedSceneId,
+
+                    menuMaxHeight: MediaQuery.of(context).size.height * 0.6,
+                    isExpanded: true,                value: _selectedSceneId,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.image),

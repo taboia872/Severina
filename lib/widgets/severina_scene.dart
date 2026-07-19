@@ -39,7 +39,7 @@ class SeverinaScene extends StatelessWidget {
         // Centralizar horizontalmente
         final bodyLeft = (screenW - bodyW) / 2;
         // Posicionar ~25% acima do rodapé (para nao ficar colado no fundo)
-        final bodyTop = screenH - bodyH - (screenH * 0.32);
+        final bodyTop = screenH - bodyH - (screenH * 0.30);
 
         // Cabeça: posicionada no topo do corpo, alinhada horizontalmente
         // com o x_center do pescoco. Largura ~28% da tela.

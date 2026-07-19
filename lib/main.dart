@@ -1,11 +1,56 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:severina/data/app_settings.dart';
 import 'package:severina/screens/chat_screen.dart';
 import 'package:severina/screens/settings_screen.dart';
 import 'package:severina/screens/setup_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
   runApp(const SeverinaApp());
+}
+
+class _FullscreenKeeper extends StatefulWidget {
+  final Widget child;
+  const _FullscreenKeeper({required this.child});
+
+  @override
+  State<_FullscreenKeeper> createState() => _FullscreenKeeperState();
+}
+
+class _FullscreenKeeperState extends State<_FullscreenKeeper> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _enterFullscreen();
+  }
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    // Re-ativa fullscreen se o sistema reexibir as barras
+    Future.microtask(_enterFullscreen);
+  }
+
+  void _enterFullscreen() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
+  }
 }
 
 class SeverinaApp extends StatelessWidget {
@@ -23,7 +68,7 @@ class SeverinaApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const AppRouter(),
+      home: const _FullscreenKeeper(child: AppRouter()),
       routes: {
         '/chat': (ctx) => const ChatScreen(),
         '/settings': (ctx) => const SettingsScreen(),
