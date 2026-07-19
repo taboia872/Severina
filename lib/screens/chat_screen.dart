@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../data/app_settings.dart';
 import '../services/ai_service.dart';
@@ -31,6 +32,21 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _initServices() async {
     await AppSettings.I.load();
+    // Garante permissao de microfone antes de inicializar STT
+    // (Android 12+ exige request runtime explicito)
+    final micStatus = await Permission.microphone.status;
+    if (!micStatus.isGranted) {
+      final result = await Permission.microphone.request();
+      if (!result.isGranted && mounted) {
+        // Sem microfone, app nao funcional — avisa usuario
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Permissao de microfone negada. STT nao funcionara.'),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    }
     await SttService.init();
     if (mounted) setState(() => _loaded = true);
   }
