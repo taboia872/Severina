@@ -56,18 +56,16 @@ class TtsService {
       return;
     }
 
-    for (var i = 0; i < chunks.length; i++) {
+    onStart?.call();
+
+    for (final chunk in chunks) {
       if (_stopped) break;
-      final chunk = chunks[i];
       final url = Uri.parse(
         'https://translate.google.com/translate_tts'
         '?ie=UTF-8&tl=pt-BR&client=tw-ob&q=${Uri.encodeComponent(chunk)}',
       );
       final res = await http.get(url);
       if (res.statusCode != 200) continue;
-
-      // Dispara onStart ANTES do primeiro play (audio pronto)
-      if (i == 0) onStart?.call();
 
       // toca como bytes direto
       await _player.play(BytesSource(res.bodyBytes));
