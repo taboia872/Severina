@@ -9,7 +9,7 @@ export 'severina_face.dart' show SeverinaFaceState;
 /// - Cabeca (CustomPainter do severina_face.dart)
 ///
 /// Corpo dimensionado a 40% da largura da tela, centralizado horizontalmente,
-/// posicionado a ~35% da altura a partir do rodapé. Cabeça encaixada no topo
+/// posicionado a ~32% da altura a partir do rodapé. Cabeça encaixada no topo
 /// do corpo, alinhada pelo x_center do pescoço do PNG (49.4% do centro).
 
 class SeverinaScene extends StatelessWidget {
@@ -39,13 +39,13 @@ class SeverinaScene extends StatelessWidget {
         // Centralizar horizontalmente
         final bodyLeft = (screenW - bodyW) / 2;
         // Posicionar ~25% acima do rodapé (para nao ficar colado no fundo)
-        final bodyTop = screenH - bodyH - (screenH * 0.35);
+        final bodyTop = screenH - bodyH - (screenH * 0.32);
 
         // Cabeça: posicionada no topo do corpo, alinhada horizontalmente
         // com o x_center do pescoco. Largura ~28% da tela.
         final headW = screenW * 0.28;
         // Cabeça fica ligeiramente acima do topo do corpo (sobreposicao)
-        final headTop = bodyTop - headW * 1.05;
+        final headTop = bodyTop - headW * 1.0;
         // Alinhar horizontalmente: pescoco do corpo está a bodyLeft + bodyW * _neckXCenter
         final neckXInBody = bodyLeft + bodyW * _neckXCenter;
         final headLeft = neckXInBody - headW / 2;

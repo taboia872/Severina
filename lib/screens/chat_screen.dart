@@ -114,7 +114,7 @@ class _ChatScreenState extends State<ChatScreen> {
         clean,
         onStart: () async {
           // Atraso de 1s para sincronizar a animacao com o audio real.
-          await Future.delayed(const Duration(seconds: 1));
+          await Future.delayed(const Duration(milliseconds: 1500));
           if (mounted) setState(() => _state = SeverinaState.speaking);
         },
         onComplete: () {
