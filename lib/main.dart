@@ -38,7 +38,13 @@ class _FullscreenKeeperState extends State<_FullscreenKeeper> with WidgetsBindin
   }
 
   void _enterFullscreen() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    // manual + overlays: [] é mais estável que immersiveSticky em
+    // variants de OEM (Samsung One UI 4.1, MIUI, etc.) que quebram o
+    // re-hide automatico das barras.
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: const [],
+    );
   }
 
   @override
