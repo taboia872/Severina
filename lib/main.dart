@@ -53,6 +53,88 @@ class _FullscreenKeeperState extends State<_FullscreenKeeper> with WidgetsBindin
   }
 }
 
+class _FadeSlideTransitionsBuilder extends PageTransitionsBuilder {
+  const _FadeSlideTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return _FadeSlide(routeAnimation: animation, child: child);
+  }
+}
+
+class _FadeSlide extends StatefulWidget {
+  final Animation<double> routeAnimation;
+  final Widget child;
+  const _FadeSlide({required this.routeAnimation, required this.child});
+
+  @override
+  State<_FadeSlide> createState() => _FadeSlideState();
+}
+
+class _FadeSlideState extends State<_FadeSlide>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      duration: const Duration(seconds: 1),
+      reverseDuration: const Duration(seconds: 1),
+      vsync: this,
+    );
+    _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
+    _slide = Tween<Offset>(
+      begin: const Offset(0.04, 0.0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+
+    // Segue a animacao nativa da rota (0 -> 1 na entrada, 1 -> 0 na saida)
+    widget.routeAnimation.addListener(_sync);
+    _sync();
+  }
+
+  void _sync() {
+    final status = widget.routeAnimation.status;
+    if (status == AnimationStatus.forward) {
+      if (!_ctrl.isAnimating && _ctrl.value < 1.0) {
+        _ctrl.forward();
+      }
+    } else if (status == AnimationStatus.reverse) {
+      if (!_ctrl.isAnimating && _ctrl.value > 0.0) {
+        _ctrl.reverse();
+      }
+    } else if (status == AnimationStatus.completed) {
+      _ctrl.value = 1.0;
+    } else if (status == AnimationStatus.dismissed) {
+      _ctrl.value = 0.0;
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.routeAnimation.removeListener(_sync);
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fade,
+      child: SlideTransition(position: _slide, child: widget.child),
+    );
+  }
+}
+
 class SeverinaApp extends StatelessWidget {
   const SeverinaApp({super.key});
 
@@ -69,9 +151,8 @@ class SeverinaApp extends StatelessWidget {
         useMaterial3: true,
         pageTransitionsTheme: const PageTransitionsTheme(
           builders: {
-            // Material 3: fade + slide sutil (efeito 'fadeForwards')
-            TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
-            TargetPlatform.iOS: FadeForwardsPageTransitionsBuilder(),
+            TargetPlatform.android: _FadeSlideTransitionsBuilder(),
+            TargetPlatform.iOS: _FadeSlideTransitionsBuilder(),
           },
         ),
       ),
