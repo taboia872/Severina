@@ -29,6 +29,26 @@ lib/
     settings_screen.dart       # Editar config
 ```
 
+## Download
+
+APKs pré-compilados ficam em **[GitHub Releases](https://github.com/taboia872/Severina/releases)**.
+
+1. Abra a página de releases
+2. Baixe `severina-vX.Y.Z.apk` da versão desejada
+3. Instale no Android (ative "Fontes desconhecidas" se necessário)
+4. Assinatura fixa entre builds → atualiza sem desinstalar
+
+## Features
+
+- **Voz:** STT (Android nativo, local) → LLM cloud → Google TTS → playback
+- **UI:** corpo do robô + cabeça CustomPainter sobre cenário de fundo
+- **3 cenários** trocáveis (yard, toy_room, library)
+- **Fullscreen imersivo** (SystemUiMode.immersiveSticky)
+- **Transição suave** entre telas (fade + slide, 1s)
+- **Multi-provedor LLM:** Gemini (default) e OpenRouter, com múltiplos slots de API Key
+- **System prompt:** Severina como babá gentil (sem emojis, sem thinking, respostas curtas)
+- **PTT (Press-to-Talk):** botão de microfone 72px com guards de estado
+
 ## Build
 
 ```bash
@@ -37,3 +57,14 @@ flutter build apk --debug
 ```
 
 O CI no GitHub Actions builda automaticamente a cada push na `main`.
+
+## Release (manual)
+
+Para gerar um novo release com APK anexado:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+O workflow `.github/workflows/release.yml` dispara em push de tag `v*`, builda APK release assinado e cria a release automaticamente no GitHub.
