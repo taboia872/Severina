@@ -228,8 +228,8 @@ class _RobotFacePainter extends CustomPainter {
       ..color = color
       ..style = PaintingStyle.fill;
 
-    final halfW = radius * 1.0;
-    final maxDrop = radius * 0.8;
+    final halfW = radius * 0.75;
+    final maxDrop = radius * 1.2;
     final drop = maxDrop * (radius - 4.0) / 12.0; // escala com mouthOpen
 
     // Arco superior (linha reta na parte de cima) + curva embaixo
@@ -249,7 +249,7 @@ class _RobotFacePainter extends CustomPainter {
     final inner = Paint()..color = Colors.black54..style = PaintingStyle.fill;
     final innerPath = Path();
     final innerDrop = drop * 0.7;
-    final innerHalfW = halfW * 0.8;
+    final innerHalfW = halfW * 0.75;
     innerPath.moveTo(center.dx - innerHalfW, center.dy);
     innerPath.quadraticBezierTo(
       center.dx, center.dy + innerDrop,
