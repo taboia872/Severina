@@ -45,7 +45,7 @@ class SeverinaScene extends StatelessWidget {
         // com o x_center do pescoco. Largura ~28% da tela.
         final headW = screenW * 0.28;
         // Cabeça fica ligeiramente acima do topo do corpo (sobreposicao)
-        final headTop = bodyTop - headW * 1.0 - 10;
+        final headTop = bodyTop - headW * 1.0 - 25;
         // Alinhar horizontalmente: pescoco do corpo está a bodyLeft + bodyW * _neckXCenter
         final neckXInBody = bodyLeft + bodyW * _neckXCenter;
         final headLeft = neckXInBody - headW / 2;
