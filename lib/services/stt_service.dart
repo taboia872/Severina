@@ -9,10 +9,16 @@ class SttService {
   static const _audioChannel = MethodChannel('severina/audio');
 
   static Future<bool> init() async {
-    _available = await _stt.initialize(
-      onError: (err) {},
-      onStatus: (status) {},
-    );
+    try {
+      // Timeout 5s — em alguns Android (Samsung One UI) o initialize()
+      // pode nunca completar se o Google STT nao estiver disponivel.
+      _available = await _stt.initialize(
+        onError: (err) {},
+        onStatus: (status) {},
+      ).timeout(const Duration(seconds: 5), onTimeout: () => false);
+    } catch (_) {
+      _available = false;
+    }
     return _available;
   }
 

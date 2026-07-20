@@ -47,7 +47,11 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       }
     }
-    await SttService.init();
+    try {
+      await SttService.init();
+    } catch (_) {
+      // STT pode falhar em alguns dispositivos; nao bloqueia a UI.
+    }
     if (mounted) setState(() => _loaded = true);
   }
 
@@ -58,23 +62,39 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _onMicDown() async {
     if (_state != SeverinaState.idle) return;
 
+    if (!SttService.isAvailable) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Reconhecimento de voz indisponivel neste dispositivo.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() {
       _state = SeverinaState.listening;
       _lastHeard = '';
       _partialText = '';
     });
 
-    await SttService.startListening(
-      onResult: (text, isFinal) {
-        if (text.isEmpty) return;
-        if (mounted) {
-          setState(() {
-            _partialText = text;
-            _lastHeard = text;
-          });
-        }
-      },
-    );
+    try {
+      await SttService.startListening(
+        onResult: (text, isFinal) {
+          if (text.isEmpty) return;
+          if (mounted) {
+            setState(() {
+              _partialText = text;
+              _lastHeard = text;
+            });
+          }
+        },
+      );
+    } catch (_) {
+      if (mounted) setState(() => _state = SeverinaState.idle);
+    }
   }
 
   Future<void> _onMicUp() async {
