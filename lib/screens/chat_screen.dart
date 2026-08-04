@@ -119,8 +119,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _conversation.add({'role': 'user', 'content': userText});
 
-    final history = _conversation.length > 6
-        ? _conversation.sublist(_conversation.length - 6)
+    final history = _conversation.length > 12
+        ? _conversation.sublist(_conversation.length - 12)
         : List<Map<String, String>>.from(_conversation);
 
     final messages = <Map<String, String>>[

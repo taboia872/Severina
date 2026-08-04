@@ -29,11 +29,19 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Decode keystore from secret
+        run: |
+          echo "${{ secrets.SEVERINA_KEYSTORE_BASE64 }}" | base64 -d > android/app/severina.keystore
+
       - name: Install dependencies
         run: flutter pub get
 
       - name: Build release APK (assinado)
         run: flutter build apk --release
+        env:
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
 
       - name: Resolve tag
         id: tag

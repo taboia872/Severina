@@ -64,13 +64,24 @@ class TtsService {
         'https://translate.google.com/translate_tts'
         '?ie=UTF-8&tl=pt-BR&client=tw-ob&q=${Uri.encodeComponent(chunk)}',
       );
-      final res = await http.get(url);
-      if (res.statusCode != 200) continue;
 
-      // toca como bytes direto
-      await _player.play(BytesSource(res.bodyBytes));
-      // espera terminar antes do próximo chunk
-      await _player.onPlayerComplete.first;
+      // Retry com backoff exponencial para 429/5xx do Google Translate TTS.
+      bool ok = false;
+      for (var attempt = 0; attempt < 3 && !ok && !_stopped; attempt++) {
+        final res = await http.get(url);
+        if (res.statusCode == 200) {
+          await _player.play(BytesSource(res.bodyBytes));
+          await _player.onPlayerComplete.first;
+          ok = true;
+        } else if (res.statusCode == 429 || res.statusCode >= 500) {
+          // Backoff: 1s, 2s, 4s
+          await Future.delayed(Duration(seconds: 1 << attempt));
+        } else {
+          // Erro definitivo (4xx que nao é 429) — nao retenta
+          break;
+        }
+      }
+      // Se todos os retries falharam, pula o chunk (fala parcial)
     }
 
     onComplete?.call();

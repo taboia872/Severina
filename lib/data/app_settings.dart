@@ -180,7 +180,8 @@ Regras obrigatórias:
   static Future<List<MapEntry<String, String>>> fetchGeminiModels(String apiKey) async {
     try {
       final res = await http.get(
-        Uri.parse('https://generativelanguage.googleapis.com/v1beta/models?key=$apiKey'),
+        Uri.parse('https://generativelanguage.googleapis.com/v1beta/models'),
+        headers: {'x-goog-api-key': apiKey},
       ).timeout(const Duration(seconds: 15));
       if (res.statusCode != 200) return [];
       final data = jsonDecode(res.body);

@@ -44,10 +44,10 @@ android {
 
     signingConfigs {
         release {
-            keyAlias 'severina'
-            keyPassword 'severina2026'
+            keyAlias System.getenv('KEY_ALIAS') ?: 'severina'
+            keyPassword System.getenv('KEY_PASSWORD') ?: 'severina2026'
             storeFile file('severina.keystore')
-            storePassword 'severina2026'
+            storePassword System.getenv('STORE_PASSWORD') ?: 'severina2026'
         }
     }
 

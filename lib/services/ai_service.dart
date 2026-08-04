@@ -54,11 +54,14 @@ class AiService {
     }
 
     final url =
-        '${s.currentProviderConfig.baseUrl}/models/${s.model}:generateContent?key=${s.apiKey}';
+        '${s.currentProviderConfig.baseUrl}/models/${s.model}:generateContent';
 
     final res = await http.post(
       Uri.parse(url),
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': s.apiKey,
+      },
       body: jsonEncode(body),
     ).timeout(const Duration(seconds: 30));
 
