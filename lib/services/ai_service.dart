@@ -4,16 +4,17 @@ import '../data/app_settings.dart';
 
 class AiService {
   /// Envia a conversa para a API do provedor ativo e retorna a resposta em texto.
-  /// Suporta Gemini (formato contents) e OpenRouter (formato OpenAI messages).
+  /// Suporta Gemini (formato contents) e OpenAI-compatible (OpenRouter, Groq, AIHorde, Ollama, Custom).
   static Future<String> chat({
     required List<Map<String, String>> messages,
   }) async {
     final s = AppSettings.I;
+    final pc = s.currentProviderConfig;
 
-    if (s.provider == AiProvider.gemini) {
+    if (pc.apiFormat == ApiFormat.gemini) {
       return _chatGemini(messages, s);
     } else {
-      return _chatOpenAICompat(messages, s);
+      return _chatOpenAICompat(messages, s, pc);
     }
   }
 
@@ -83,15 +84,19 @@ class AiService {
     return _stripThinkTags(text);
   }
 
-  /// OpenAI-compatible (OpenRouter) — formato chat/completions.
+  /// OpenAI-compatible (OpenRouter, Groq, AIHorde, Ollama, Custom) — formato chat/completions.
   static Future<String> _chatOpenAICompat(
     List<Map<String, String>> messages,
     AppSettings s,
+    ProviderConfig pc,
   ) async {
     final headers = <String, String>{
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ${s.apiKey}',
     };
+
+    if (pc.requiresApiKey && s.apiKey.isNotEmpty) {
+      headers['Authorization'] = 'Bearer ${s.apiKey}';
+    }
 
     if (s.provider == AiProvider.openrouter) {
       headers['HTTP-Referer'] = 'https://github.com/taboia872/Severina';
@@ -106,7 +111,7 @@ class AiService {
       'stream': false,
     });
 
-    final endpoint = '${s.currentProviderConfig.baseUrl}/chat/completions';
+    final endpoint = '${pc.baseUrl}/chat/completions';
 
     final res = await http.post(
       Uri.parse(endpoint),

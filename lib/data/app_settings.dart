@@ -3,7 +3,10 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 /// Provedores de IA suportados.
-enum AiProvider { gemini, openrouter }
+enum AiProvider { gemini, openrouter, groq, aihorde, ollama, custom }
+
+/// Define o formato de API que o provedor usa.
+enum ApiFormat { gemini, openaiCompat, ollama }
 
 /// Configuração fixa por provedor.
 class ProviderConfig {
@@ -12,12 +15,18 @@ class ProviderConfig {
   final String defaultModel;
   final String hintApiKey;
   final String baseUrl;
+  final ApiFormat apiFormat;
+  final bool requiresApiKey;
+  final bool requiresEndpoint;
   const ProviderConfig({
     required this.provider,
     required this.label,
     required this.defaultModel,
     required this.hintApiKey,
     required this.baseUrl,
+    this.apiFormat = ApiFormat.openaiCompat,
+    this.requiresApiKey = true,
+    this.requiresEndpoint = false,
   });
 }
 
@@ -54,6 +63,7 @@ class AppSettings {
   static const _keyMaxTokens = 'maxTokens';
   static const _keyActiveSlot = 'activeSlot';
   static const _keyActiveScene = 'activeScene';
+  static const _keyCustomBaseUrl = 'customBaseUrl';
 
   // Prefixo pra salvar múltiplas API keys: slot_<id> = jsonEncodo(label+key)
   static const _slotPrefix = 'slot_';
@@ -65,13 +75,44 @@ class AppSettings {
       defaultModel: 'gemini-3.1-flash-light',
       hintApiKey: 'API Key do Google AI Studio (aistudio.google.com)',
       baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+      apiFormat: ApiFormat.gemini,
     ),
     ProviderConfig(
       provider: AiProvider.openrouter,
       label: 'OpenRouter',
       defaultModel: 'openrouter/free',
-      hintApiKey: 'Token do OpenRouter (openrouter.ai/keys)',
+      hintApiKey: 'API Key do OpenRouter (openrouter.ai/keys)',
       baseUrl: 'https://openrouter.ai/api/v1',
+    ),
+    ProviderConfig(
+      provider: AiProvider.groq,
+      label: 'Groq',
+      defaultModel: 'llama-3.3-70b-versatile',
+      hintApiKey: 'API Key do Groq (console.groq.com/keys)',
+      baseUrl: 'https://api.groq.com/openai/v1',
+    ),
+    ProviderConfig(
+      provider: AiProvider.aihorde,
+      label: 'AIHorde',
+      defaultModel: 'openrouter/auto',
+      hintApiKey: 'API Key do AIHorde (aihorde.net)',
+      baseUrl: 'https://oai.aihorde.net/v1',
+    ),
+    ProviderConfig(
+      provider: AiProvider.ollama,
+      label: 'Ollama (local/remoto)',
+      defaultModel: 'llama3.2',
+      hintApiKey: 'Não necessário (Ollama não usa API key)',
+      baseUrl: 'http://localhost:11434/v1',
+      requiresApiKey: false,
+    ),
+    ProviderConfig(
+      provider: AiProvider.custom,
+      label: 'Personalizado',
+      defaultModel: '',
+      hintApiKey: 'API Key do seu provedor',
+      baseUrl: '',
+      requiresEndpoint: true,
     ),
   ];
 
@@ -122,6 +163,7 @@ Regras obrigatórias:
   int maxTokens = 150;
   String activeSlotId = '';
   String activeSceneId = 'toy_room';
+  String customBaseUrl = '';
 
   SceneConfig get activeScene =>
       scenes.firstWhere((s) => s.id == activeSceneId, orElse: () => scenes.first);
@@ -131,7 +173,23 @@ Regras obrigatórias:
 
   AppSettings._();
 
-  ProviderConfig get currentProviderConfig => providerConfigFor(provider);
+  ProviderConfig get currentProviderConfig {
+    final pc = providerConfigFor(provider);
+    if (provider == AiProvider.custom && customBaseUrl.isNotEmpty) {
+      // Retorna uma cópia com o baseUrl customizado
+      return ProviderConfig(
+        provider: pc.provider,
+        label: pc.label,
+        defaultModel: pc.defaultModel,
+        hintApiKey: pc.hintApiKey,
+        baseUrl: customBaseUrl,
+        apiFormat: pc.apiFormat,
+        requiresApiKey: pc.requiresApiKey,
+        requiresEndpoint: pc.requiresEndpoint,
+      );
+    }
+    return pc;
+  }
 
   /// Troca o provedor e auto-preenche modelo default.
   void switchProvider(AiProvider newProvider) {
@@ -243,6 +301,10 @@ Regras obrigatórias:
   static AiProvider _parseProvider(String? s) {
     switch (s) {
       case 'openrouter': return AiProvider.openrouter;
+      case 'groq': return AiProvider.groq;
+      case 'aihorde': return AiProvider.aihorde;
+      case 'ollama': return AiProvider.ollama;
+      case 'custom': return AiProvider.custom;
       default: return AiProvider.gemini;
     }
   }
@@ -262,6 +324,7 @@ Regras obrigatórias:
     maxTokens = prefs.getInt(_keyMaxTokens) ?? 150;
     activeSlotId = prefs.getString(_keyActiveSlot) ?? '';
     activeSceneId = prefs.getString(_keyActiveScene) ?? 'toy_room';
+    customBaseUrl = prefs.getString(_keyCustomBaseUrl) ?? '';
 
     // Carrega a API key do slot ativo
     if (activeSlotId.isNotEmpty) {
@@ -290,6 +353,7 @@ Regras obrigatórias:
       await prefs.setString(_keyActiveSlot, activeSlotId);
     }
     await prefs.setString(_keyActiveScene, activeSceneId);
+    await prefs.setString(_keyCustomBaseUrl, customBaseUrl);
   }
 
   Future<void> reset() async {

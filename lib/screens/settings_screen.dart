@@ -9,6 +9,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _model;
+  late TextEditingController _endpoint;
   late double _temp;
   late int _maxTokens;
   late AiProvider _provider;
@@ -27,6 +28,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     final s = AppSettings.I;
     _model = TextEditingController(text: s.model);
+    _endpoint = TextEditingController(text: s.customBaseUrl);
     _temp = s.temperature;
     _maxTokens = s.maxTokens;
     _provider = s.provider;
@@ -38,6 +40,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void dispose() {
     _model.dispose();
+    _endpoint.dispose();
     super.dispose();
   }
 
@@ -57,12 +60,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _detectModels() async {
+    final pc = AppSettings.providerConfigFor(_provider);
     final apiKey = _currentApiKey();
-    if (apiKey.isEmpty) {
+    if (pc.requiresApiKey && apiKey.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_provider == AiProvider.gemini
-            ? 'Cadastre uma API Key do Gemini primeiro'
-            : 'Cadastre uma API Key do OpenRouter primeiro')),
+        SnackBar(content: Text('Cadastre uma API Key do ${pc.label} primeiro')),
       );
       return;
     }
@@ -120,6 +122,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     s.maxTokens = _maxTokens;
     s.activeSlotId = _activeSlotId;
     s.activeSceneId = _selectedSceneId;
+    s.customBaseUrl = _endpoint.text.trim();
     // Atualiza apiKey do slot ativo
     final slot = _slots.where((sl) => sl.id == _activeSlotId).firstOrNull;
     if (slot != null) s.apiKey = slot.key;
@@ -129,8 +132,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final pc = AppSettings.providerConfigFor(_provider);
     final showModelDetect = _provider == AiProvider.gemini || _provider == AiProvider.openrouter;
-    final showSlotManager = _provider == AiProvider.gemini || _provider == AiProvider.openrouter;
+    final showSlotManager = pc.requiresApiKey;
+    final showEndpoint = pc.requiresEndpoint;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Configurações')),
@@ -157,6 +162,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 }).toList(),
               ),
               const SizedBox(height: 24),
+
+              // === ENDPOINT (somente Custom) ===
+              if (showEndpoint) ...[
+                Text('Endpoint (URL)', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _endpoint,
+                  decoration: const InputDecoration(
+                    labelText: 'URL do provedor (OpenAI-compatible)',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.link),
+                    hintText: 'https://exemplo.com/v1',
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
 
               // === API KEYS (SLOTS) ===
               if (showSlotManager) ...[
@@ -227,11 +248,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     labelText: 'Modelo',
                     border: const OutlineInputBorder(),
                     prefixIcon: const Icon(Icons.memory),
-                    hintText: _provider == AiProvider.gemini
-                        ? 'gemini-3.1-flash-light'
-                        : _provider == AiProvider.openrouter
-                            ? 'openrouter/free'
-                            : 'openrouter',
+                    hintText: pc.defaultModel.isNotEmpty ? pc.defaultModel : 'ex: model-name',
                   ),
                 ),
               if (showModelDetect) ...[
@@ -367,9 +384,8 @@ class _SlotManagerSheetState extends State<_SlotManagerSheet> {
     final nameCtrl = TextEditingController(text: existing?.label ?? '');
     final keyCtrl = TextEditingController(text: existing?.key ?? '');
     final isEdit = existing != null;
-    final hint = widget.provider == AiProvider.gemini
-        ? 'Ex: Gemini Principal, Gemini Trabalho'
-        : 'Ex: OpenRouter Free, OpenRouter Pessoal';
+    final pc = AppSettings.providerConfigFor(widget.provider);
+    final hint = 'Ex: ${pc.label} Principal, ${pc.label} Trabalho';
 
     showDialog(
       context: context,

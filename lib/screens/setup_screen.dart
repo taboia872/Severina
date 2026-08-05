@@ -10,6 +10,7 @@ class SetupScreen extends StatefulWidget {
 class _SetupScreenState extends State<SetupScreen> {
   final _modelCtrl = TextEditingController();
   final _apiKeyCtrl = TextEditingController();
+  final _endpointCtrl = TextEditingController();
   AiProvider _provider = AiProvider.gemini;
   bool _loading = false;
   bool _obscureKey = true;
@@ -26,6 +27,7 @@ class _SetupScreenState extends State<SetupScreen> {
     await AppSettings.I.load();
     _modelCtrl.text = AppSettings.I.model;
     _provider = AppSettings.I.provider;
+    _endpointCtrl.text = AppSettings.I.customBaseUrl;
     if (mounted) setState(() {});
   }
 
@@ -40,13 +42,13 @@ class _SetupScreenState extends State<SetupScreen> {
   }
 
   Future<void> _detectModels() async {
+    final pc = AppSettings.providerConfigFor(_provider);
     final apiKey = _apiKeyCtrl.text.trim();
-    if (apiKey.isEmpty) {
+
+    if (pc.requiresApiKey && apiKey.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_provider == AiProvider.gemini
-              ? 'Digite a API Key do Gemini primeiro'
-              : 'Digite a API Key do OpenRouter primeiro'),
+          content: Text('Digite a API Key do ${pc.label} primeiro'),
         ),
       );
       return;
@@ -65,9 +67,7 @@ class _SetupScreenState extends State<SetupScreen> {
 
     if (models.isEmpty && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_provider == AiProvider.gemini
-            ? 'Não encontrei modelos. Verifique a API Key do Google.'
-            : 'Não encontrei modelos gratuitos. Verifique a API Key.')),
+        const SnackBar(content: Text('Não encontrei modelos. Verifique a API Key.')),
       );
     } else {
       setState(() => _models = models);
@@ -75,12 +75,23 @@ class _SetupScreenState extends State<SetupScreen> {
   }
 
   Future<void> _save() async {
+    final pc = AppSettings.providerConfigFor(_provider);
     final apiKey = _apiKeyCtrl.text.trim();
 
-    if (apiKey.isEmpty) {
+    if (pc.requiresApiKey && apiKey.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Cadastre uma API Key do ${_provider == AiProvider.gemini ? 'Gemini' : 'OpenRouter'} para continuar.'),
+          content: Text('Cadastre uma API Key do ${pc.label} para continuar.'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    if (pc.requiresEndpoint && _endpointCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Digite o endpoint (URL) do seu provedor.'),
           duration: const Duration(seconds: 3),
         ),
       );
@@ -89,10 +100,11 @@ class _SetupScreenState extends State<SetupScreen> {
 
     setState(() => _loading = true);
 
-    // Salva a API key como primeiro slot
-    final slotId = DateTime.now().millisecondsSinceEpoch.toString();
-    final slotLabel = _provider == AiProvider.gemini ? 'Gemini' : 'OpenRouter';
-    await AppSettings.saveSlot(slotId, slotLabel, apiKey);
+    String slotId = '';
+    if (pc.requiresApiKey && apiKey.isNotEmpty) {
+      slotId = DateTime.now().millisecondsSinceEpoch.toString();
+      await AppSettings.saveSlot(slotId, pc.label, apiKey);
+    }
 
     final s = AppSettings.I;
     s.provider = _provider;
@@ -100,6 +112,7 @@ class _SetupScreenState extends State<SetupScreen> {
     s.systemPrompt = AppSettings.defaultSystemPrompt;
     s.apiKey = apiKey;
     s.activeSlotId = slotId;
+    s.customBaseUrl = _endpointCtrl.text.trim();
     await s.save();
 
     if (mounted) {
@@ -111,6 +124,7 @@ class _SetupScreenState extends State<SetupScreen> {
   void dispose() {
     _modelCtrl.dispose();
     _apiKeyCtrl.dispose();
+    _endpointCtrl.dispose();
     super.dispose();
   }
 
@@ -163,25 +177,44 @@ class _SetupScreenState extends State<SetupScreen> {
               ),
               const SizedBox(height: 28),
 
-              // --- API Key ---
-              Text('API Key',
-                  style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _apiKeyCtrl,
-                obscureText: _obscureKey,
-                decoration: InputDecoration(
-                  labelText: 'Sua chave de API',
-                  border: const OutlineInputBorder(),
-                  prefixIcon: const Icon(Icons.key),
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscureKey ? Icons.visibility_off : Icons.visibility),
-                    onPressed: () => setState(() => _obscureKey = !_obscureKey),
+              // --- Endpoint (somente Custom) ---
+              if (pc.requiresEndpoint) ...[
+                Text('Endpoint (URL)',
+                    style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _endpointCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'URL do provedor (OpenAI-compatible)',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.link),
+                    hintText: 'https://exemplo.com/v1',
                   ),
-                  hintText: pc.hintApiKey,
                 ),
-              ),
-              const SizedBox(height: 28),
+                const SizedBox(height: 28),
+              ],
+
+              // --- API Key (oculta se não precisa) ---
+              if (pc.requiresApiKey) ...[
+                Text('API Key',
+                    style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _apiKeyCtrl,
+                  obscureText: _obscureKey,
+                  decoration: InputDecoration(
+                    labelText: 'Sua chave de API',
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.key),
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscureKey ? Icons.visibility_off : Icons.visibility),
+                      onPressed: () => setState(() => _obscureKey = !_obscureKey),
+                    ),
+                    hintText: pc.hintApiKey,
+                  ),
+                ),
+                const SizedBox(height: 28),
+              ],
 
               // --- Modelo ---
               Text('Modelo',
@@ -193,7 +226,7 @@ class _SetupScreenState extends State<SetupScreen> {
                   isExpanded: true,
                   value: _models.any((m) => m.key == _modelCtrl.text) ? _modelCtrl.text : null,
                   decoration: InputDecoration(
-                    labelText: _provider == AiProvider.gemini ? 'Modelo Gemini' : 'Modelo (gratuito)',
+                    labelText: 'Modelo ${pc.label}',
                     border: const OutlineInputBorder(),
                     prefixIcon: const Icon(Icons.memory),
                   ),
@@ -214,20 +247,24 @@ class _SetupScreenState extends State<SetupScreen> {
                     labelText: 'Nome do modelo',
                     border: const OutlineInputBorder(),
                     prefixIcon: const Icon(Icons.memory),
-                    hintText: pc.defaultModel,
+                    hintText: pc.defaultModel.isNotEmpty ? pc.defaultModel : 'ex: model-name',
                   ),
                 ),
               const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _detectingModels ? null : _detectModels,
-                  icon: _detectingModels
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.search),
-                  label: Text(_detectingModels ? 'Buscando modelos...' : 'Listar modelos disponíveis'),
+              // Listar modelos só faz sentido para provedores com API key (Gemini/OpenRouter)
+              if (_provider == AiProvider.gemini || _provider == AiProvider.openrouter) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _detectingModels ? null : _detectModels,
+                    icon: _detectingModels
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.search),
+                    label: Text(_detectingModels ? 'Buscando modelos...' : 'Listar modelos disponíveis'),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 12),
+              ],
               const SizedBox(height: 40),
 
               FilledButton.icon(
