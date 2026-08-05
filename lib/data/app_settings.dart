@@ -62,7 +62,7 @@ class AppSettings {
     ProviderConfig(
       provider: AiProvider.gemini,
       label: 'Gemini (Google)',
-      defaultModel: 'gemini-2.0-flash',
+      defaultModel: 'gemini-3.1-flash-light',
       hintApiKey: 'API Key do Google AI Studio (aistudio.google.com)',
       baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
     ),
@@ -115,7 +115,7 @@ Regras obrigatórias:
   // --- estado em memória ---
   AiProvider provider = AiProvider.gemini;
   String apiKey = '';
-  String model = 'gemini-2.0-flash';
+  String model = 'gemini-3.1-flash-light';
   String systemPrompt = defaultSystemPrompt;
   String assistantName = 'Severina';
   double temperature = 0.9;

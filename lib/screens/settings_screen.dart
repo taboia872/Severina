@@ -228,7 +228,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     border: const OutlineInputBorder(),
                     prefixIcon: const Icon(Icons.memory),
                     hintText: _provider == AiProvider.gemini
-                        ? 'gemini-2.0-flash'
+                        ? 'gemini-3.1-flash-light'
                         : _provider == AiProvider.openrouter
                             ? 'openrouter/free'
                             : 'openrouter',

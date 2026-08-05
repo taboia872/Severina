@@ -9,8 +9,10 @@ class SetupScreen extends StatefulWidget {
 
 class _SetupScreenState extends State<SetupScreen> {
   final _modelCtrl = TextEditingController();
+  final _apiKeyCtrl = TextEditingController();
   AiProvider _provider = AiProvider.gemini;
   bool _loading = false;
+  bool _obscureKey = true;
 
   @override
   void initState() {
@@ -30,23 +32,54 @@ class _SetupScreenState extends State<SetupScreen> {
       _provider = newProvider;
       final pc = AppSettings.providerConfigFor(newProvider);
       _modelCtrl.text = pc.defaultModel;
+      _apiKeyCtrl.clear();
     });
   }
 
   Future<void> _save() async {
+    final apiKey = _apiKeyCtrl.text.trim();
+
+    if (apiKey.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Cadastre uma API Key do ${_provider == AiProvider.gemini ? 'Gemini' : 'OpenRouter'} para continuar.'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     setState(() => _loading = true);
+
+    // Salva a API key como primeiro slot
+    final slotId = DateTime.now().millisecondsSinceEpoch.toString();
+    final slotLabel = _provider == AiProvider.gemini ? 'Gemini' : 'OpenRouter';
+    await AppSettings.saveSlot(slotId, slotLabel, apiKey);
+
     final s = AppSettings.I;
     s.provider = _provider;
     s.model = _modelCtrl.text.trim();
     s.systemPrompt = AppSettings.defaultSystemPrompt;
+    s.apiKey = apiKey;
+    s.activeSlotId = slotId;
     await s.save();
+
     if (mounted) {
       Navigator.pushReplacementNamed(context, '/chat');
     }
   }
 
   @override
+  void dispose() {
+    _modelCtrl.dispose();
+    _apiKeyCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final pc = AppSettings.providerConfigFor(_provider);
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -92,6 +125,26 @@ class _SetupScreenState extends State<SetupScreen> {
               ),
               const SizedBox(height: 28),
 
+              // --- API Key ---
+              Text('API Key',
+                  style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _apiKeyCtrl,
+                obscureText: _obscureKey,
+                decoration: InputDecoration(
+                  labelText: 'Sua chave de API',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.key),
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscureKey ? Icons.visibility_off : Icons.visibility),
+                    onPressed: () => setState(() => _obscureKey = !_obscureKey),
+                  ),
+                  hintText: pc.hintApiKey,
+                ),
+              ),
+              const SizedBox(height: 28),
+
               // --- Modelo ---
               Text('Modelo',
                   style: Theme.of(context).textTheme.titleMedium),
@@ -102,30 +155,9 @@ class _SetupScreenState extends State<SetupScreen> {
                   labelText: 'Nome do modelo',
                   border: const OutlineInputBorder(),
                   prefixIcon: const Icon(Icons.memory),
-                  hintText: AppSettings.providerConfigFor(_provider).defaultModel,
+                  hintText: pc.defaultModel,
                 ),
               ),
-              const SizedBox(height: 16),
-
-              // --- Aviso sobre API Key ---
-                Card(
-                  color: Colors.blue[50],
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.info, color: Colors.blue, size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Cadastre sua API Key em Configurações → Chaves de API',
-                            style: TextStyle(fontSize: 13, color: Colors.blue[800]),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
               const SizedBox(height: 40),
 
               FilledButton.icon(

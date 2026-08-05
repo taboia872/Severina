@@ -125,11 +125,11 @@ class AiService {
     return _stripThinkTags(text);
   }
 
-  /// Remove tags  que alguns modelos (DeepSeek R1, etc) injetam.
+    /// Remove tags <think> que alguns modelos (DeepSeek R1, etc) injetam.
   static String _stripThinkTags(String text) {
     var cleaned = text;
-    // tags completas: <think>...
-    final fullThinkRegex = RegExp(r'', multiLine: true, dotAll: true);
+    // tags completas: <think>...</think>
+    final fullThinkRegex = RegExp(r'<think>.*?</think>', multiLine: true, dotAll: true);
     cleaned = cleaned.replaceAll(fullThinkRegex, '').trim();
     // tag de abertura sem fechamento até o final
     final openThinkRegex = RegExp(r'<think>.*$', multiLine: true, dotAll: true);
