@@ -36,7 +36,6 @@ class SttService {
       localeId: 'pt-BR',
       listenOptions: stt.SpeechListenOptions(
         listenMode: stt.ListenMode.dictation,
-        autoReset: true,
         listenFor: const Duration(seconds: 8),
       ),
     );

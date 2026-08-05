@@ -228,7 +228,7 @@ class _SetupScreenState extends State<SetupScreen> {
                   label: Text(_detectingModels ? 'Buscando modelos...' : 'Listar modelos disponíveis'),
                 ),
               ),
-              const SizedBox(height: 40);
+              const SizedBox(height: 40),
 
               FilledButton.icon(
                 onPressed: _loading ? null : _save,
