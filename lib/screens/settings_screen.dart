@@ -298,6 +298,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Apagar tudo?'),
+                      content: const Text(
+                        'Isso vai apagar todas as configurações, chaves de API e conversas. '
+                        'O app volta para a tela inicial. Tem certeza?',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Cancelar'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                          child: const Text('Apagar tudo'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed != true) return;
                   await AppSettings.I.reset();
                   if (!mounted) return;
                   Navigator.pushNamedAndRemoveUntil(context, '/setup', (_) => false);

@@ -8,9 +8,9 @@ Assistente por voz para crianças (~5 anos), em Flutter.
  microfone (STT local) → API (LLM cloud) → Google TTS (MP3) → speaker
 ```
 
-- **STT:** `speech_to_text` (Android SpeechRecognizer nativo, local)
-- **LLM:** HTTP POST para qualquer endpoint OpenAI-compatible (OpenRouter, OpenAI, custom)
-- **TTS:** Google Translate TTS → MP3 → `audioplayers`
+- **STT:** `speech_to_text` (Android SpeechRecognizer nativo, local) — auto-para após 8s de silêncio
+- **LLM:** HTTP POST para Gemini (Google) ou OpenRouter (OpenAI-compatible)
+- **TTS:** Google Translate TTS → MP3 → `audioplayers` (retry com backoff exponencial)
 - **Settings:** `shared_preferences`
 
 ## Estrutura
@@ -18,15 +18,15 @@ Assistente por voz para crianças (~5 anos), em Flutter.
 ```
 lib/
   main.dart                    # App + router (setup → chat)
-  data/app_settings.dart       # Config + presets + persistência
+  data/app_settings.dart       # Config + presets + persistência + slots de API key
   services/
-    stt_service.dart           # Captura de voz (local)
-    ai_service.dart            # Chamada LLM (HTTP)
-    tts_service.dart            # Google Translate TTS + playback
+    stt_service.dart           # Captura de voz (local, timeout 8s)
+    ai_service.dart            # Chamada LLM (HTTP, Gemini/OpenAI-compat)
+    tts_service.dart            # Google Translate TTS + playback (retry 3x)
   screens/
-    setup_screen.dart          # Primeira config (API key, preset)
+    setup_screen.dart          # Primeira config (API key, provedor, modelo)
     chat_screen.dart           # Tela principal (voz + face)
-    settings_screen.dart       # Editar config
+    settings_screen.dart       # Editar config, chaves, cenários
 ```
 
 ## Download
@@ -41,13 +41,20 @@ APKs pré-compilados ficam em **[GitHub Releases](https://github.com/taboia872/S
 ## Features
 
 - **Voz:** STT (Android nativo, local) → LLM cloud → Google TTS → playback
+- **STT com timeout:** auto-para após 8s de silêncio (não trava ouvindo indefinidamente)
 - **UI:** corpo do robô + cabeça CustomPainter sobre cenário de fundo
 - **3 cenários** trocáveis (yard, toy_room, library)
-- **Fullscreen imersivo** (SystemUiMode.immersiveSticky)
+- **Fullscreen imersivo** (SystemUiMode.manual, overlays: [])
 - **Transição suave** entre telas (fade + slide, 1s)
-- **Multi-provedor LLM:** Gemini (default) e OpenRouter, com múltiplos slots de API Key
+- **Multi-provedor LLM:** Gemini (default: `gemini-3.1-flash-light`) e OpenRouter
+- **Slots de API Key:** múltiplas chaves com nomes amigáveis, troca rápida
+- **Detecção de modelos:** lista modelos disponíveis do provedor (Gemini ou gratuitos do OpenRouter)
 - **System prompt:** Severina como babá gentil (sem emojis, sem thinking, respostas curtas)
-- **PTT (Press-to-Talk):** botão de microfone 72px com guards de estado
+- **PTT (Press-to-Talk):** botão de microfone 72px com guards de estado + feedback tátil (HapticFeedback)
+- **Erros amigáveis:** SnackBar com mensagens em PT-BR (sem internet, API key inválida, modelo não encontrado, rate limit)
+- **Confirmação ao resetar:** AlertDialog antes de apagar tudo (preserva chaves de API)
+- **Retry no TTS:** 3 tentativas com backoff exponencial (1s/2s/4s) para 429/5xx do Google
+- **Gemini API key via header** (`x-goog-api-key`) em vez de query string
 
 ## Build
 
@@ -57,6 +64,16 @@ flutter build apk --debug
 ```
 
 O CI no GitHub Actions builda automaticamente a cada push na `main`.
+
+### Keystore (CI)
+
+O keystore de assinatura **não está no repositório** — é injetado via GitHub Secrets:
+- `SEVERINA_KEYSTORE_BASE64` — keystore em base64
+- `KEY_ALIAS` — alias da chave
+- `KEY_PASSWORD` — senha da chave
+- `STORE_PASSWORD` — senha do keystore
+
+O workflow decodifica o keystore de Secret antes do build e as senhas são lidas de env vars.
 
 ## Release (manual)
 

@@ -22,6 +22,7 @@ class SttService {
   static bool get isAvailable => _available;
 
   /// Inicia escuta em pt-BR. Streaming de resultados parciais via onResult.
+  /// Auto-para após 8s de silêncio para não ficar ouvindo indefinidamente.
   static Future<void> startListening({
     required void Function(String text, bool isFinal) onResult,
   }) async {
@@ -35,6 +36,8 @@ class SttService {
       localeId: 'pt-BR',
       listenOptions: stt.SpeechListenOptions(
         listenMode: stt.ListenMode.dictation,
+        autoReset: true,
+        listenFor: const Duration(seconds: 8),
       ),
     );
   }

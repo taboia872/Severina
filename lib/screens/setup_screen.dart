@@ -13,6 +13,8 @@ class _SetupScreenState extends State<SetupScreen> {
   AiProvider _provider = AiProvider.gemini;
   bool _loading = false;
   bool _obscureKey = true;
+  bool _detectingModels = false;
+  List<MapEntry<String, String>> _models = [];
 
   @override
   void initState() {
@@ -33,7 +35,43 @@ class _SetupScreenState extends State<SetupScreen> {
       final pc = AppSettings.providerConfigFor(newProvider);
       _modelCtrl.text = pc.defaultModel;
       _apiKeyCtrl.clear();
+      _models = [];
     });
+  }
+
+  Future<void> _detectModels() async {
+    final apiKey = _apiKeyCtrl.text.trim();
+    if (apiKey.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_provider == AiProvider.gemini
+              ? 'Digite a API Key do Gemini primeiro'
+              : 'Digite a API Key do OpenRouter primeiro'),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _detectingModels = true);
+
+    List<MapEntry<String, String>> models;
+    if (_provider == AiProvider.gemini) {
+      models = await AppSettings.fetchGeminiModels(apiKey);
+    } else {
+      models = await AppSettings.fetchOpenRouterFreeModels(apiKey);
+    }
+
+    setState(() => _detectingModels = false);
+
+    if (models.isEmpty && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_provider == AiProvider.gemini
+            ? 'Não encontrei modelos. Verifique a API Key do Google.'
+            : 'Não encontrei modelos gratuitos. Verifique a API Key.')),
+      );
+    } else {
+      setState(() => _models = models);
+    }
   }
 
   Future<void> _save() async {
@@ -149,16 +187,48 @@ class _SetupScreenState extends State<SetupScreen> {
               Text('Modelo',
                   style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
-              TextField(
-                controller: _modelCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Nome do modelo',
-                  border: const OutlineInputBorder(),
-                  prefixIcon: const Icon(Icons.memory),
-                  hintText: pc.defaultModel,
+              if (_models.isNotEmpty)
+                DropdownButtonFormField<String>(
+                  menuMaxHeight: MediaQuery.of(context).size.height * 0.6,
+                  isExpanded: true,
+                  value: _models.any((m) => m.key == _modelCtrl.text) ? _modelCtrl.text : null,
+                  decoration: InputDecoration(
+                    labelText: _provider == AiProvider.gemini ? 'Modelo Gemini' : 'Modelo (gratuito)',
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.memory),
+                  ),
+                  items: _models.map((m) {
+                    return DropdownMenuItem(
+                      value: m.key,
+                      child: Text(m.value, overflow: TextOverflow.ellipsis),
+                    );
+                  }).toList(),
+                  onChanged: (v) {
+                    if (v != null) setState(() => _modelCtrl.text = v);
+                  },
+                )
+              else
+                TextField(
+                  controller: _modelCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Nome do modelo',
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.memory),
+                    hintText: pc.defaultModel,
+                  ),
+                ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _detectingModels ? null : _detectModels,
+                  icon: _detectingModels
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.search),
+                  label: Text(_detectingModels ? 'Buscando modelos...' : 'Listar modelos disponíveis'),
                 ),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 40);
 
               FilledButton.icon(
                 onPressed: _loading ? null : _save,

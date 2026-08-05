@@ -294,6 +294,11 @@ Regras obrigatórias:
 
   Future<void> reset() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    // Preserva slots de API key (slot_*) — só apaga config e flags.
+    final keysToKeep = prefs.getKeys().where((k) => k.startsWith(_slotPrefix)).toSet();
+    final allKeys = prefs.getKeys().toSet();
+    for (final key in allKeys.difference(keysToKeep)) {
+      await prefs.remove(key);
+    }
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../data/app_settings.dart';
@@ -74,6 +75,8 @@ class _ChatScreenState extends State<ChatScreen> {
       return;
     }
 
+    HapticFeedback.mediumImpact();
+
     setState(() {
       _state = SeverinaState.listening;
       _lastHeard = '';
@@ -92,6 +95,12 @@ class _ChatScreenState extends State<ChatScreen> {
           }
         },
       );
+      // Safety net: se o STT auto-para por timeout de 8s mas o
+      // onPointerUp não disparou (criança ainda segurando), processa.
+      await Future.delayed(const Duration(seconds: 9));
+      if (_state == SeverinaState.listening) {
+        _onMicUp();
+      }
     } catch (_) {
       if (mounted) setState(() => _state = SeverinaState.idle);
     }
@@ -100,6 +109,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _onMicUp() async {
     if (_state != SeverinaState.listening) return;
 
+    HapticFeedback.lightImpact();
     await SttService.stopListening();
 
     // Pequeno delay para garantir que o último callback onResult chegue
@@ -158,9 +168,16 @@ class _ChatScreenState extends State<ChatScreen> {
         },
       );
     } catch (e) {
+      final msg = _friendlyError(e.toString());
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg),
+            duration: const Duration(seconds: 4),
+          ),
+        );
         setState(() {
-          _lastResponse = 'Erro: $e';
+          _lastResponse = '';
           _state = SeverinaState.idle;
         });
       }
@@ -176,6 +193,28 @@ class _ChatScreenState extends State<ChatScreen> {
       _lastResponse = '';
       _state = SeverinaState.idle;
     });
+  }
+
+  /// Traduz erros técnicos em mensagens amigáveis para o pai/responsável.
+  String _friendlyError(String error) {
+    final e = error.toLowerCase();
+    if (e.contains('socketexception') || e.contains('handshake') ||
+        e.contains('failed host') || e.contains('network')) {
+      return 'Sem internet. Verifique a conexão e tente novamente.';
+    }
+    if (e.contains('401') || e.contains('403') || e.contains('api key')) {
+      return 'API Key inválida. Verifique nas configurações.';
+    }
+    if (e.contains('404') || e.contains('model')) {
+      return 'Modelo não encontrado. Verifique o nome nas configurações.';
+    }
+    if (e.contains('429') || e.contains('rate') || e.contains('quota')) {
+      return 'Muitas mensagens rápido demais. Aguarde um momento.';
+    }
+    if (e.contains('timeout')) {
+      return 'Demorou demais para responder. Tente novamente.';
+    }
+    return 'Algo deu errado. Tente novamente.';
   }
 
   @override
