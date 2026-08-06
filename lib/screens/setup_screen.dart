@@ -54,20 +54,29 @@ class _SetupScreenState extends State<SetupScreen> {
       return;
     }
 
+    if (pc.requiresEndpoint && _endpointCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Digite o endpoint (URL) do seu provedor primeiro.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     setState(() => _detectingModels = true);
 
-    List<MapEntry<String, String>> models;
-    if (_provider == AiProvider.gemini) {
-      models = await AppSettings.fetchGeminiModels(apiKey);
-    } else {
-      models = await AppSettings.fetchOpenRouterFreeModels(apiKey);
-    }
+    final models = await AppSettings.fetchModelsForProvider(
+      _provider,
+      apiKey,
+      _endpointCtrl.text.trim(),
+    );
 
     setState(() => _detectingModels = false);
 
     if (models.isEmpty && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Não encontrei modelos. Verifique a API Key.')),
+        SnackBar(content: Text('Não encontrei modelos. Verifique a API Key${pc.requiresEndpoint ? ' e o endpoint' : ''}.')),
       );
     } else {
       setState(() => _models = models);
@@ -251,20 +260,17 @@ class _SetupScreenState extends State<SetupScreen> {
                   ),
                 ),
               const SizedBox(height: 12),
-              // Listar modelos só faz sentido para provedores com API key (Gemini/OpenRouter)
-              if (_provider == AiProvider.gemini || _provider == AiProvider.openrouter) ...[
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _detectingModels ? null : _detectModels,
-                    icon: _detectingModels
-                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Icon(Icons.search),
-                    label: Text(_detectingModels ? 'Buscando modelos...' : 'Listar modelos disponíveis'),
-                  ),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _detectingModels ? null : _detectModels,
+                  icon: _detectingModels
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.search),
+                  label: Text(_detectingModels ? 'Buscando modelos...' : 'Listar modelos disponíveis'),
                 ),
-                const SizedBox(height: 12),
-              ],
+              ),
+              const SizedBox(height: 12),
               const SizedBox(height: 40),
 
               FilledButton.icon(

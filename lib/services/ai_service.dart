@@ -4,7 +4,7 @@ import '../data/app_settings.dart';
 
 class AiService {
   /// Envia a conversa para a API do provedor ativo e retorna a resposta em texto.
-  /// Suporta Gemini (formato contents) e OpenAI-compatible (OpenRouter, Groq, AIHorde, Ollama, Custom).
+  /// Suporta Gemini (formato contents) e OpenAI-compatible (OpenRouter, Groq, AIHorde, Custom).
   static Future<String> chat({
     required List<Map<String, String>> messages,
   }) async {
@@ -84,7 +84,7 @@ class AiService {
     return _stripThinkTags(text);
   }
 
-  /// OpenAI-compatible (OpenRouter, Groq, AIHorde, Ollama, Custom) — formato chat/completions.
+  /// OpenAI-compatible (OpenRouter, Groq, AIHorde, Custom) — formato chat/completions.
   static Future<String> _chatOpenAICompat(
     List<Map<String, String>> messages,
     AppSettings s,

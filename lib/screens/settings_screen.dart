@@ -69,14 +69,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
 
+    // Para provedor Custom, precisa do endpoint preenchido
+    if (pc.requiresEndpoint && _endpoint.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Digite o endpoint (URL) do provedor primeiro')),
+      );
+      return;
+    }
+
     setState(() => _loadingModels = true);
 
-    List<MapEntry<String, String>> models;
-    if (_provider == AiProvider.gemini) {
-      models = await AppSettings.fetchGeminiModels(apiKey);
-    } else {
-      models = await AppSettings.fetchOpenRouterFreeModels(apiKey);
-    }
+    final models = await AppSettings.fetchModelsForProvider(
+      _provider,
+      apiKey,
+      _endpoint.text.trim(),
+    );
 
     setState(() {
       _loadingModels = false;
@@ -88,7 +95,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(_provider == AiProvider.gemini
             ? 'Não encontrei modelos. Verifique a API Key do Google.'
-            : 'Não encontrei modelos gratuitos. Verifique a API Key.')),
+            : _provider == AiProvider.openrouter
+            ? 'Não encontrei modelos gratuitos. Verifique a API Key.'
+            : 'Não encontrei modelos. Verifique a API Key e o endpoint do ${pc.label}.')),
       );
     }
   }
@@ -133,7 +142,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final pc = AppSettings.providerConfigFor(_provider);
-    final showModelDetect = _provider == AiProvider.gemini || _provider == AiProvider.openrouter;
+    final showModelDetect = true;
     final showSlotManager = pc.requiresApiKey;
     final showEndpoint = pc.requiresEndpoint;
 
@@ -224,7 +233,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     menuMaxHeight: MediaQuery.of(context).size.height * 0.6,
                     isExpanded: true,                  value: _selectedModel,
                   decoration: InputDecoration(
-                    labelText: _provider == AiProvider.gemini ? 'Modelo Gemini' : 'Modelo (gratuito)',
+                    labelText: 'Modelo ${pc.label}',
                     border: const OutlineInputBorder(),
                     prefixIcon: const Icon(Icons.memory),
                   ),

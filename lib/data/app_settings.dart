@@ -3,10 +3,10 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 /// Provedores de IA suportados.
-enum AiProvider { gemini, openrouter, groq, aihorde, ollama, custom }
+enum AiProvider { gemini, openrouter, groq, aihorde, custom }
 
 /// Define o formato de API que o provedor usa.
-enum ApiFormat { gemini, openaiCompat, ollama }
+enum ApiFormat { gemini, openaiCompat }
 
 /// Configuração fixa por provedor.
 class ProviderConfig {
@@ -97,14 +97,6 @@ class AppSettings {
       defaultModel: 'openrouter/auto',
       hintApiKey: 'API Key do AIHorde (aihorde.net)',
       baseUrl: 'https://oai.aihorde.net/v1',
-    ),
-    ProviderConfig(
-      provider: AiProvider.ollama,
-      label: 'Ollama (local/remoto)',
-      defaultModel: 'llama3.2',
-      hintApiKey: 'Não necessário (Ollama não usa API key)',
-      baseUrl: 'http://localhost:11434/v1',
-      requiresApiKey: false,
     ),
     ProviderConfig(
       provider: AiProvider.custom,
@@ -296,6 +288,58 @@ Regras obrigatórias:
     }
   }
 
+  /// Lista modelos de um provedor OpenAI-compatible via GET /models.
+  /// Funciona para OpenRouter, Groq, AIHorde e Custom.
+  static Future<List<MapEntry<String, String>>> fetchOpenAICompatModels(
+    String baseUrl,
+    String apiKey,
+  ) async {
+    try {
+      final headers = <String, String>{};
+      if (apiKey.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $apiKey';
+      }
+      final res = await http.get(
+        Uri.parse('$baseUrl/models'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+      if (res.statusCode != 200) return [];
+      final data = jsonDecode(res.body);
+      final models = data['data'] as List;
+      final result = <MapEntry<String, String>>[];
+      for (final m in models) {
+        final id = m['id'] as String? ?? '';
+        if (id.isEmpty) continue;
+        final name = m['name']?.toString() ?? id;
+        result.add(MapEntry(id, name));
+      }
+      result.sort((a, b) => a.value.toLowerCase().compareTo(b.value.toLowerCase()));
+      return result;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Despacha a busca de modelos para o método correto conforme o provedor.
+  static Future<List<MapEntry<String, String>>> fetchModelsForProvider(
+    AiProvider provider,
+    String apiKey,
+    String customBaseUrl,
+  ) async {
+    if (provider == AiProvider.gemini) {
+      return fetchGeminiModels(apiKey);
+    }
+    if (provider == AiProvider.openrouter) {
+      return fetchOpenRouterFreeModels(apiKey);
+    }
+    // Groq, AIHorde, Custom — todos usam OpenAI-compatible /models
+    final pc = providerConfigFor(provider);
+    final base = (provider == AiProvider.custom && customBaseUrl.isNotEmpty)
+        ? customBaseUrl
+        : pc.baseUrl;
+    return fetchOpenAICompatModels(base, apiKey);
+  }
+
   // --- persistência ---
 
   static AiProvider _parseProvider(String? s) {
@@ -303,7 +347,6 @@ Regras obrigatórias:
       case 'openrouter': return AiProvider.openrouter;
       case 'groq': return AiProvider.groq;
       case 'aihorde': return AiProvider.aihorde;
-      case 'ollama': return AiProvider.ollama;
       case 'custom': return AiProvider.custom;
       default: return AiProvider.gemini;
     }
