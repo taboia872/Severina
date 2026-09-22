@@ -11,7 +11,7 @@ class _SetupScreenState extends State<SetupScreen> {
   final _modelCtrl = TextEditingController();
   final _apiKeyCtrl = TextEditingController();
   final _endpointCtrl = TextEditingController();
-  AiProvider _provider = AiProvider.gemini;
+  AiProvider _provider = AiProvider.openrouter;
   bool _loading = false;
   bool _obscureKey = true;
   bool _detectingModels = false;

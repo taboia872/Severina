@@ -93,11 +93,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (models.isEmpty && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_provider == AiProvider.gemini
-            ? 'Não encontrei modelos. Verifique a API Key do Google.'
-            : _provider == AiProvider.openrouter
+        SnackBar(content: Text(_provider == AiProvider.openrouter
             ? 'Não encontrei modelos gratuitos. Verifique a API Key.'
-            : 'Não encontrei modelos. Verifique a API Key e o endpoint do ${pc.label}.')),
+            : pc.requiresEndpoint
+            ? 'Não encontrei modelos. Verifique a API Key e o endpoint do ${pc.label}.'
+            : 'Não encontrei modelos. Verifique a API Key do ${pc.label}.')),
       );
     }
   }

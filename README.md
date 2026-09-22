@@ -21,7 +21,7 @@ lib/
   data/app_settings.dart       # Config + presets + persistência + slots de API key
   services/
     stt_service.dart           # Captura de voz (local, timeout 8s)
-    ai_service.dart            # Chamada LLM (HTTP, Gemini/OpenAI-compat)
+    ai_service.dart            # Chamada LLM (HTTP, OpenAI-compat)
     tts_service.dart           # Google Translate TTS + playback (retry 3x)
   screens/
     setup_screen.dart          # Primeira config (API key, provedor, modelo)
@@ -46,7 +46,7 @@ APKs pré-compilados ficam em **[GitHub Releases](https://github.com/taboia872/S
 - **3 cenários** trocáveis (yard, toy_room, library)
 - **Fullscreen imersivo** (SystemUiMode.manual, overlays: [])
 - **Transição suave** entre telas (fade + slide, 1s)
-- **Multi-provedor LLM:** Gemini, OpenRouter, Groq, AIHorde e Personalizado (endpoint custom)
+- **Multi-provedor LLM:** OpenRouter (modelos gratuitos), Groq, Ollama Cloud e Personalizado (endpoint custom)
 - **Slots de API Key:** múltiplas chaves com nomes amigáveis, troca rápida
 - **Detecção de modelos:** lista modelos disponíveis para **todos** os provedores (botão "Listar modelos disponíveis")
 - **Endpoint customizado:** provedor Personalizado com URL OpenAI-compatible + API key
@@ -55,16 +55,14 @@ APKs pré-compilados ficam em **[GitHub Releases](https://github.com/taboia872/S
 - **Erros amigáveis:** SnackBar com mensagens em PT-BR (sem internet, API key inválida, modelo não encontrado, rate limit)
 - **Confirmação ao resetar:** AlertDialog antes de apagar tudo (preserva chaves de API)
 - **Retry no TTS:** 3 tentativas com backoff exponencial (1s/2s/4s) para 429/5xx do Google
-- **Gemini API key via header** (`x-goog-api-key`) em vez de query string
 
 ### Provedores suportados
 
 | Provedor | API | API Key | Busca de modelos |
 |---|---|---|---|
-| **Gemini** (Google) | REST `generateContent` | Sim (`x-goog-api-key`) | Sim (modelos Gemini) |
 | **OpenRouter** | OpenAI-compatible | Sim (`Bearer`) | Sim (modelos gratuitos) |
 | **Groq** | OpenAI-compatible | Sim (`Bearer`) | Sim (via `/models`) |
-| **AIHorde** | OpenAI-compatible | Sim (`Bearer`) | Sim (via `/models`) |
+| **Ollama Cloud** | OpenAI-compatible | Sim (`Bearer`) | Sim (via `/models`) |
 | **Personalizado** | OpenAI-compatible | Sim ou não | Sim (via `/models` no endpoint informado) |
 
 ## Build

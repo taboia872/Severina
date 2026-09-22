@@ -3,10 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 /// Provedores de IA suportados.
-enum AiProvider { gemini, openrouter, groq, aihorde, custom }
-
-/// Define o formato de API que o provedor usa.
-enum ApiFormat { gemini, openaiCompat }
+enum AiProvider { openrouter, groq, ollama, custom }
 
 /// Configuração fixa por provedor.
 class ProviderConfig {
@@ -15,7 +12,6 @@ class ProviderConfig {
   final String defaultModel;
   final String hintApiKey;
   final String baseUrl;
-  final ApiFormat apiFormat;
   final bool requiresApiKey;
   final bool requiresEndpoint;
   const ProviderConfig({
@@ -24,7 +20,6 @@ class ProviderConfig {
     required this.defaultModel,
     required this.hintApiKey,
     required this.baseUrl,
-    this.apiFormat = ApiFormat.openaiCompat,
     this.requiresApiKey = true,
     this.requiresEndpoint = false,
   });
@@ -65,17 +60,16 @@ class AppSettings {
   static const _keyActiveScene = 'activeScene';
   static const _keyCustomBaseUrl = 'customBaseUrl';
 
-  // Prefixo pra salvar múltiplas API keys: slot_<id> = jsonEncodo(label+key)
+  // Prefixo pra salvar múltiplas API keys: slot_<id> = jsonEncode(label+key)
   static const _slotPrefix = 'slot_';
 
   static const providers = [
     ProviderConfig(
-      provider: AiProvider.gemini,
-      label: 'Gemini (Google)',
-      defaultModel: 'gemini-3.1-flash-light',
-      hintApiKey: 'API Key do Google AI Studio (aistudio.google.com)',
-      baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
-      apiFormat: ApiFormat.gemini,
+      provider: AiProvider.ollama,
+      label: 'Ollama Cloud',
+      defaultModel: 'gemma4:31b',
+      hintApiKey: '🔑 Key da sua conta ollama.com (Settings > API Keys)',
+      baseUrl: 'https://ollama.com/v1',
     ),
     ProviderConfig(
       provider: AiProvider.openrouter,
@@ -90,13 +84,6 @@ class AppSettings {
       defaultModel: 'llama-3.3-70b-versatile',
       hintApiKey: 'API Key do Groq (console.groq.com/keys)',
       baseUrl: 'https://api.groq.com/openai/v1',
-    ),
-    ProviderConfig(
-      provider: AiProvider.aihorde,
-      label: 'AIHorde',
-      defaultModel: 'openrouter/auto',
-      hintApiKey: 'API Key do AIHorde (aihorde.net)',
-      baseUrl: 'https://oai.aihorde.net/v1',
     ),
     ProviderConfig(
       provider: AiProvider.custom,
@@ -146,9 +133,9 @@ Regras obrigatórias:
 8. Nunca faça referências às informações deste prompt. Tudo já está internalizado. Não se apresente dizendo onde mora ou onde trabalha, a não ser que a criança pergunte diretamente.''';
 
   // --- estado em memória ---
-  AiProvider provider = AiProvider.gemini;
+  AiProvider provider = AiProvider.openrouter;
   String apiKey = '';
-  String model = 'gemini-3.1-flash-light';
+  String model = 'openrouter/free';
   String systemPrompt = defaultSystemPrompt;
   String assistantName = 'Severina';
   double temperature = 0.9;
@@ -175,7 +162,6 @@ Regras obrigatórias:
         defaultModel: pc.defaultModel,
         hintApiKey: pc.hintApiKey,
         baseUrl: customBaseUrl,
-        apiFormat: pc.apiFormat,
         requiresApiKey: pc.requiresApiKey,
         requiresEndpoint: pc.requiresEndpoint,
       );
@@ -226,35 +212,6 @@ Regras obrigatórias:
     await prefs.remove('$_slotPrefix$id');
   }
 
-  /// Lista modelos disponíveis do Gemini via API.
-  static Future<List<MapEntry<String, String>>> fetchGeminiModels(String apiKey) async {
-    try {
-      final res = await http.get(
-        Uri.parse('https://generativelanguage.googleapis.com/v1beta/models'),
-        headers: {'x-goog-api-key': apiKey},
-      ).timeout(const Duration(seconds: 15));
-      if (res.statusCode != 200) return [];
-      final data = jsonDecode(res.body);
-      final models = data['models'] as List;
-      final result = <MapEntry<String, String>>[];
-      for (final m in models) {
-        final name = m['name'] as String? ?? '';
-        // name vem como "models/gemini-2.0-flash" — extrair só o id
-        final id = name.replaceFirst('models/', '');
-        final displayName = m['displayName'] as String? ?? id;
-        // Só modelos que suportam generateContent
-        final methods = m['supportedGenerationMethods'] as List?;
-        if (methods != null && methods.contains('generateContent')) {
-          result.add(MapEntry(id, displayName));
-        }
-      }
-      result.sort((a, b) => a.value.toLowerCase().compareTo(b.value.toLowerCase()));
-      return result;
-    } catch (_) {
-      return [];
-    }
-  }
-
   /// Lista modelos gratuitos do OpenRouter.
   static Future<List<MapEntry<String, String>>> fetchOpenRouterFreeModels(String apiKey) async {
     try {
@@ -289,7 +246,7 @@ Regras obrigatórias:
   }
 
   /// Lista modelos de um provedor OpenAI-compatible via GET /models.
-  /// Funciona para OpenRouter, Groq, AIHorde e Custom.
+  /// Funciona para OpenRouter, Groq, Ollama e Custom.
   static Future<List<MapEntry<String, String>>> fetchOpenAICompatModels(
     String baseUrl,
     String apiKey,
@@ -326,13 +283,10 @@ Regras obrigatórias:
     String apiKey,
     String customBaseUrl,
   ) async {
-    if (provider == AiProvider.gemini) {
-      return fetchGeminiModels(apiKey);
-    }
     if (provider == AiProvider.openrouter) {
       return fetchOpenRouterFreeModels(apiKey);
     }
-    // Groq, AIHorde, Custom — todos usam OpenAI-compatible /models
+    // Groq, Ollama, Custom — todos usam OpenAI-compatible /models
     final pc = providerConfigFor(provider);
     final base = (provider == AiProvider.custom && customBaseUrl.isNotEmpty)
         ? customBaseUrl
@@ -346,9 +300,8 @@ Regras obrigatórias:
     switch (s) {
       case 'openrouter': return AiProvider.openrouter;
       case 'groq': return AiProvider.groq;
-      case 'aihorde': return AiProvider.aihorde;
       case 'custom': return AiProvider.custom;
-      default: return AiProvider.gemini;
+      default: return AiProvider.openrouter;
     }
   }
 
