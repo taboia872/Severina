@@ -20,24 +20,33 @@ class _SetupScreenState extends State<SetupScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCurrent();
+    _provider = AppSettings.I.provider;
+    _loadProfileIntoFields();
   }
 
-  Future<void> _loadCurrent() async {
-    await AppSettings.I.load();
-    _modelCtrl.text = AppSettings.I.model;
-    _provider = AppSettings.I.provider;
-    _endpointCtrl.text = AppSettings.I.customBaseUrl;
-    if (mounted) setState(() {});
+  /// Preenche os campos com o perfil salvo do provedor selecionado.
+  void _loadProfileIntoFields() {
+    final s = AppSettings.I;
+    final prof = s.profileFor(_provider);
+    _apiKeyCtrl.text = prof.apiKey;
+    _endpointCtrl.text = prof.customBaseUrl;
+    _modelCtrl.text =
+        prof.model.isNotEmpty ? prof.model : AppSettings.providerConfigFor(_provider).defaultModel;
+    _models = [];
+  }
+
+  @override
+  void dispose() {
+    _modelCtrl.dispose();
+    _apiKeyCtrl.dispose();
+    _endpointCtrl.dispose();
+    super.dispose();
   }
 
   void _switchProvider(AiProvider newProvider) {
     setState(() {
       _provider = newProvider;
-      final pc = AppSettings.providerConfigFor(newProvider);
-      _modelCtrl.text = pc.defaultModel;
-      _apiKeyCtrl.clear();
-      _models = [];
+      _loadProfileIntoFields();
     });
   }
 
@@ -47,9 +56,7 @@ class _SetupScreenState extends State<SetupScreen> {
 
     if (pc.requiresApiKey && apiKey.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Digite a API Key do ${pc.label} primeiro'),
-        ),
+        SnackBar(content: Text('Digite a API Key do ${pc.label} primeiro')),
       );
       return;
     }
@@ -66,10 +73,10 @@ class _SetupScreenState extends State<SetupScreen> {
 
     setState(() => _detectingModels = true);
 
-    final models = await AppSettings.fetchModelsForProvider(
+    final models = await AppSettings.I.fetchModelsForProvider(
       _provider,
-      apiKey,
-      _endpointCtrl.text.trim(),
+      apiKeyOverride: apiKey,
+      endpointOverride: _endpointCtrl.text,
     );
 
     setState(() => _detectingModels = false);
@@ -89,9 +96,9 @@ class _SetupScreenState extends State<SetupScreen> {
 
     if (pc.requiresApiKey && apiKey.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Cadastre uma API Key do ${pc.label} para continuar.'),
-          duration: const Duration(seconds: 3),
+        const SnackBar(
+          content: Text('Cadastre uma API Key para continuar.'),
+          duration: Duration(seconds: 3),
         ),
       );
       return;
@@ -101,7 +108,7 @@ class _SetupScreenState extends State<SetupScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Digite o endpoint (URL) do seu provedor.'),
-          duration: const Duration(seconds: 3),
+          duration: Duration(seconds: 3),
         ),
       );
       return;
@@ -109,32 +116,18 @@ class _SetupScreenState extends State<SetupScreen> {
 
     setState(() => _loading = true);
 
-    String slotId = '';
-    if (pc.requiresApiKey && apiKey.isNotEmpty) {
-      slotId = DateTime.now().millisecondsSinceEpoch.toString();
-      await AppSettings.saveSlot(slotId, pc.label, apiKey);
-    }
-
     final s = AppSettings.I;
+    final prof = s.profileFor(_provider);
+    prof.apiKey = apiKey;
+    prof.customBaseUrl = _endpointCtrl.text.trim();
+    prof.model = _modelCtrl.text.trim();
     s.provider = _provider;
-    s.model = _modelCtrl.text.trim();
     s.systemPrompt = AppSettings.defaultSystemPrompt;
-    s.apiKey = apiKey;
-    s.activeSlotId = slotId;
-    s.customBaseUrl = _endpointCtrl.text.trim();
     await s.save();
 
     if (mounted) {
       Navigator.pushReplacementNamed(context, '/chat');
     }
-  }
-
-  @override
-  void dispose() {
-    _modelCtrl.dispose();
-    _apiKeyCtrl.dispose();
-    _endpointCtrl.dispose();
-    super.dispose();
   }
 
   @override
@@ -270,7 +263,6 @@ class _SetupScreenState extends State<SetupScreen> {
                   label: Text(_detectingModels ? 'Buscando modelos...' : 'Listar modelos disponíveis'),
                 ),
               ),
-              const SizedBox(height: 12),
               const SizedBox(height: 40),
 
               FilledButton.icon(

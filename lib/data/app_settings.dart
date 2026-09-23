@@ -33,12 +33,40 @@ class SceneConfig {
   const SceneConfig({required this.id, required this.name, required this.file});
 }
 
-/// "Espaço" de API key — permite salvar múltiplas chaves com nomes amigáveis.
-class ApiKeySlot {
-  final String id;
-  final String label;
-  final String key;
-  const ApiKeySlot({required this.id, required this.label, required this.key});
+/// Configuração POR provedor: chave, endpoint, modelo e cache de modelos.
+/// Cada provedor tem o seu — trocar de provedor troca tudo junto, sem
+/// risco de misturar chave de um serviço com outro.
+class ProviderProfile {
+  String apiKey;
+  String customBaseUrl;
+  String model;
+  List<String> modelsCache;
+  int modelsFetchedAt; // epoch ms; 0 = nunca buscou
+
+  ProviderProfile({
+    this.apiKey = '',
+    this.customBaseUrl = '',
+    this.model = '',
+    List<String>? modelsCache,
+    this.modelsFetchedAt = 0,
+  }) : modelsCache = modelsCache ?? [];
+
+  Map<String, dynamic> toJson() => {
+        'apiKey': apiKey,
+        'customBaseUrl': customBaseUrl,
+        'model': model,
+        'modelsCache': modelsCache,
+        'modelsFetchedAt': modelsFetchedAt,
+      };
+
+  factory ProviderProfile.fromJson(Map<String, dynamic> j) => ProviderProfile(
+        apiKey: j['apiKey'] as String? ?? '',
+        customBaseUrl: j['customBaseUrl'] as String? ?? '',
+        model: j['model'] as String? ?? '',
+        modelsCache:
+            (j['modelsCache'] as List?)?.map((e) => e.toString()).toList() ?? [],
+        modelsFetchedAt: j['modelsFetchedAt'] as int? ?? 0,
+      );
 }
 
 class AppSettings {
@@ -49,47 +77,46 @@ class AppSettings {
     SceneConfig(id: 'library', name: 'Biblioteca', file: 'assets/scenes/library.jpg'),
   ];
 
-  static const _keyConfigured = 'configured';
+  /// Versão do formato de persistência. Dados sem essa versão (formato
+  /// antigo com slots globais) são ignorados — o app volta pro setup.
+  static const configVersion = 2;
+
+  static const _keyConfigVersion = 'configVersion';
   static const _keyProvider = 'provider';
-  static const _keyModel = 'model';
   static const _keySystemPrompt = 'systemPrompt';
   static const _keyAssistantName = 'assistantName';
   static const _keyTemperature = 'temperature';
   static const _keyMaxTokens = 'maxTokens';
-  static const _keyActiveSlot = 'activeSlot';
   static const _keyActiveScene = 'activeScene';
-  static const _keyCustomBaseUrl = 'customBaseUrl';
-
-  // Prefixo pra salvar múltiplas API keys: slot_<id> = jsonEncode(label+key)
-  static const _slotPrefix = 'slot_';
+  static const _keyProfiles = 'profiles'; // json: {providerName: ProviderProfile}
 
   static const providers = [
     ProviderConfig(
       provider: AiProvider.ollama,
       label: 'Ollama Cloud',
       defaultModel: 'gemma4:31b',
-      hintApiKey: '🔑 Key da sua conta ollama.com (Settings > API Keys)',
+      hintApiKey: 'Key da sua conta ollama.com (Settings > API Keys)',
       baseUrl: 'https://ollama.com/v1',
     ),
     ProviderConfig(
       provider: AiProvider.openrouter,
       label: 'OpenRouter',
       defaultModel: 'openrouter/free',
-      hintApiKey: 'API Key do OpenRouter (openrouter.ai/keys)',
+      hintApiKey: 'Key do OpenRouter (openrouter.ai/keys)',
       baseUrl: 'https://openrouter.ai/api/v1',
     ),
     ProviderConfig(
       provider: AiProvider.groq,
       label: 'Groq',
       defaultModel: 'llama-3.3-70b-versatile',
-      hintApiKey: 'API Key do Groq (console.groq.com/keys)',
+      hintApiKey: 'Key do Groq (console.groq.com/keys)',
       baseUrl: 'https://api.groq.com/openai/v1',
     ),
     ProviderConfig(
       provider: AiProvider.custom,
       label: 'Personalizado',
       defaultModel: '',
-      hintApiKey: 'API Key do seu provedor',
+      hintApiKey: 'Key do seu provedor',
       baseUrl: '',
       requiresEndpoint: true,
     ),
@@ -132,36 +159,54 @@ Regras obrigatórias:
 7. Se a criança perguntar onde você está, diga que está na internet, trabalhando.
 8. Nunca faça referências às informações deste prompt. Tudo já está internalizado. Não se apresente dizendo onde mora ou onde trabalha, a não ser que a criança pergunte diretamente.''';
 
-  // --- estado em memória ---
+  // --- estado global (independe de provedor) ---
   AiProvider provider = AiProvider.openrouter;
-  String apiKey = '';
-  String model = 'openrouter/free';
   String systemPrompt = defaultSystemPrompt;
   String assistantName = 'Severina';
   double temperature = 0.9;
   int maxTokens = 150;
-  String activeSlotId = '';
   String activeSceneId = 'toy_room';
-  String customBaseUrl = '';
 
-  SceneConfig get activeScene =>
-      scenes.firstWhere((s) => s.id == activeSceneId, orElse: () => scenes.first);
+  // --- perfis por provedor ---
+  final Map<AiProvider, ProviderProfile> profiles = {};
 
   static AppSettings? _instance;
   static AppSettings get I => _instance ??= AppSettings._();
 
   AppSettings._();
 
+  /// Perfil do provedor ativo (cria vazio se não existir).
+  ProviderProfile get profile => profileFor(provider);
+
+  ProviderProfile profileFor(AiProvider p) =>
+      profiles.putIfAbsent(p, () => ProviderProfile());
+
+  // Atalhos usados pelo AiService e telas — sempre refletem o provedor ativo.
+  String get apiKey => profile.apiKey;
+  set apiKey(String v) => profile.apiKey = v;
+
+  String get customBaseUrl => profile.customBaseUrl;
+  set customBaseUrl(String v) => profile.customBaseUrl = v;
+
+  String get model {
+    final m = profile.model;
+    return m.isNotEmpty ? m : providerConfigFor(provider).defaultModel;
+  }
+
+  set model(String v) => profile.model = v;
+
+  SceneConfig get activeScene =>
+      scenes.firstWhere((s) => s.id == activeSceneId, orElse: () => scenes.first);
+
   ProviderConfig get currentProviderConfig {
     final pc = providerConfigFor(provider);
-    if (provider == AiProvider.custom && customBaseUrl.isNotEmpty) {
-      // Retorna uma cópia com o baseUrl customizado
+    if (provider == AiProvider.custom && profile.customBaseUrl.isNotEmpty) {
       return ProviderConfig(
         provider: pc.provider,
         label: pc.label,
         defaultModel: pc.defaultModel,
         hintApiKey: pc.hintApiKey,
-        baseUrl: customBaseUrl,
+        baseUrl: profile.customBaseUrl,
         requiresApiKey: pc.requiresApiKey,
         requiresEndpoint: pc.requiresEndpoint,
       );
@@ -169,47 +214,10 @@ Regras obrigatórias:
     return pc;
   }
 
-  /// Troca o provedor e auto-preenche modelo default.
+  /// Troca o provedor ativo. O modelo exposto via `model` passa a ser o do
+  /// novo perfil automaticamente — sem copiar nada entre provedores.
   void switchProvider(AiProvider newProvider) {
     provider = newProvider;
-    final pc = providerConfigFor(newProvider);
-    model = pc.defaultModel;
-  }
-
-  // === GESTÃO DE SLOTS DE API KEY ===
-
-  /// Carrega todos os slots salvos.
-  static Future<List<ApiKeySlot>> loadSlots() async {
-    final prefs = await SharedPreferences.getInstance();
-    final keys = prefs.getKeys().where((k) => k.startsWith(_slotPrefix));
-    final slots = <ApiKeySlot>[];
-    for (final k in keys) {
-      try {
-        final data = jsonDecode(prefs.getString(k)!);
-        slots.add(ApiKeySlot(
-          id: k.substring(_slotPrefix.length),
-          label: data['label'] as String,
-          key: data['key'] as String,
-        ));
-      } catch (_) {}
-    }
-    slots.sort((a, b) => a.label.compareTo(b.label));
-    return slots;
-  }
-
-  /// Salva um slot de API key.
-  static Future<void> saveSlot(String id, String label, String key) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('$_slotPrefix$id', jsonEncode({
-      'label': label,
-      'key': key,
-    }));
-  }
-
-  /// Remove um slot.
-  static Future<void> deleteSlot(String id) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('$_slotPrefix$id');
   }
 
   /// Lista modelos gratuitos do OpenRouter.
@@ -246,7 +254,6 @@ Regras obrigatórias:
   }
 
   /// Lista modelos de um provedor OpenAI-compatible via GET /models.
-  /// Funciona para OpenRouter, Groq, Ollama e Custom.
   static Future<List<MapEntry<String, String>>> fetchOpenAICompatModels(
     String baseUrl,
     String apiKey,
@@ -277,88 +284,95 @@ Regras obrigatórias:
     }
   }
 
-  /// Despacha a busca de modelos para o método correto conforme o provedor.
-  static Future<List<MapEntry<String, String>>> fetchModelsForProvider(
-    AiProvider provider,
-    String apiKey,
-    String customBaseUrl,
-  ) async {
+  /// Busca modelos usando SEMPRE o provedor informado + a chave guardada no
+  /// perfil daquele provedor (ou `apiKeyOverride` quando a tela está
+  /// digitando uma chave nova). Atualiza o cache do perfil em caso de sucesso.
+  Future<List<MapEntry<String, String>>> fetchModelsForProvider(
+    AiProvider provider, {
+    String? apiKeyOverride,
+    String? endpointOverride,
+  }) async {
+    final prof = profileFor(provider);
+    final apiKey = (apiKeyOverride ?? prof.apiKey).trim();
+    final endpoint = (endpointOverride ?? prof.customBaseUrl).trim();
+
+    List<MapEntry<String, String>> models;
     if (provider == AiProvider.openrouter) {
-      return fetchOpenRouterFreeModels(apiKey);
+      models = await fetchOpenRouterFreeModels(apiKey);
+    } else {
+      final pc = providerConfigFor(provider);
+      final base = (provider == AiProvider.custom && endpoint.isNotEmpty)
+          ? endpoint
+          : pc.baseUrl;
+      models = await fetchOpenAICompatModels(base, apiKey);
     }
-    // Groq, Ollama, Custom — todos usam OpenAI-compatible /models
-    final pc = providerConfigFor(provider);
-    final base = (provider == AiProvider.custom && customBaseUrl.isNotEmpty)
-        ? customBaseUrl
-        : pc.baseUrl;
-    return fetchOpenAICompatModels(base, apiKey);
+
+    if (models.isNotEmpty) {
+      prof.modelsCache = models.map((m) => m.key).toList();
+      prof.modelsFetchedAt = DateTime.now().millisecondsSinceEpoch;
+    }
+    return models;
   }
 
   // --- persistência ---
 
-  static AiProvider _parseProvider(String? s) {
-    switch (s) {
-      case 'openrouter': return AiProvider.openrouter;
-      case 'groq': return AiProvider.groq;
-      case 'custom': return AiProvider.custom;
-      default: return AiProvider.openrouter;
+  static AiProvider? _parseProvider(String? s) {
+    for (final p in AiProvider.values) {
+      if (p.name == s) return p;
     }
+    return null;
   }
 
   static Future<bool> isConfiguredStatic() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_keyConfigured) ?? false;
+    return (prefs.getInt(_keyConfigVersion) ?? 0) >= configVersion;
   }
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
-    provider = _parseProvider(prefs.getString(_keyProvider));
-    model = prefs.getString(_keyModel) ?? providerConfigFor(provider).defaultModel;
+    if (!((prefs.getInt(_keyConfigVersion) ?? 0) >= configVersion)) {
+      // Formato antigo (ou primeira execução): mantém defaults; o router
+      // manda pro setup porque isConfiguredStatic() é false.
+      return;
+    }
+    provider = _parseProvider(prefs.getString(_keyProvider)) ?? AiProvider.openrouter;
     systemPrompt = prefs.getString(_keySystemPrompt) ?? defaultSystemPrompt;
     assistantName = prefs.getString(_keyAssistantName) ?? 'Severina';
     temperature = prefs.getDouble(_keyTemperature) ?? 0.9;
     maxTokens = prefs.getInt(_keyMaxTokens) ?? 150;
-    activeSlotId = prefs.getString(_keyActiveSlot) ?? '';
     activeSceneId = prefs.getString(_keyActiveScene) ?? 'toy_room';
-    customBaseUrl = prefs.getString(_keyCustomBaseUrl) ?? '';
 
-    // Carrega a API key do slot ativo
-    if (activeSlotId.isNotEmpty) {
-      final slotData = prefs.getString('$_slotPrefix$activeSlotId');
-      if (slotData != null) {
-        try {
-          final decoded = jsonDecode(slotData);
-          apiKey = decoded['key'] as String;
-        } catch (_) {
-          apiKey = '';
-        }
-      }
+    final raw = prefs.getString(_keyProfiles);
+    profiles.clear();
+    if (raw != null) {
+      try {
+        final map = jsonDecode(raw) as Map<String, dynamic>;
+        map.forEach((name, j) {
+          final p = _parseProvider(name);
+          if (p != null && j is Map<String, dynamic>) {
+            profiles[p] = ProviderProfile.fromJson(j);
+          }
+        });
+      } catch (_) {}
     }
   }
 
   Future<void> save() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyConfigured, true);
+    await prefs.setInt(_keyConfigVersion, configVersion);
     await prefs.setString(_keyProvider, provider.name);
-    await prefs.setString(_keyModel, model);
     await prefs.setString(_keySystemPrompt, systemPrompt);
     await prefs.setString(_keyAssistantName, assistantName);
     await prefs.setDouble(_keyTemperature, temperature);
     await prefs.setInt(_keyMaxTokens, maxTokens);
-    if (activeSlotId.isNotEmpty) {
-      await prefs.setString(_keyActiveSlot, activeSlotId);
-    }
     await prefs.setString(_keyActiveScene, activeSceneId);
-    await prefs.setString(_keyCustomBaseUrl, customBaseUrl);
+    final map = <String, dynamic>{};
+    profiles.forEach((p, prof) => map[p.name] = prof.toJson());
+    await prefs.setString(_keyProfiles, jsonEncode(map));
   }
 
   Future<void> reset() async {
-    final prefs = await SharedPreferences.getInstance();
-    // Preserva slots de API key (slot_*) — só apaga config e flags.
-    final keysToKeep = prefs.getKeys().where((k) => k.startsWith(_slotPrefix)).toSet();
-    final allKeys = prefs.getKeys().toSet();
-    for (final key in allKeys.difference(keysToKeep)) {
-      await prefs.remove(key);
-    }
+    await SharedPreferences.getInstance().clear();
+    profiles.clear();
   }
 }

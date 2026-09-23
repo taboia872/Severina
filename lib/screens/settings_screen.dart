@@ -8,68 +8,68 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  late TextEditingController _apiKey;
   late TextEditingController _model;
   late TextEditingController _endpoint;
   late double _temp;
   late int _maxTokens;
   late AiProvider _provider;
+  late String _selectedSceneId;
+  bool _obscureKey = true;
 
   bool _loadingModels = false;
   List<MapEntry<String, String>> _models = [];
-  String? _selectedModel;
-
-  // Slots de API key
-  List<ApiKeySlot> _slots = [];
-  String _activeSlotId = '';
-  String _selectedSceneId = 'toy_room';
 
   @override
   void initState() {
     super.initState();
     final s = AppSettings.I;
-    _model = TextEditingController(text: s.model);
-    _endpoint = TextEditingController(text: s.customBaseUrl);
+    _provider = s.provider;
     _temp = s.temperature;
     _maxTokens = s.maxTokens;
-    _provider = s.provider;
-    _activeSlotId = s.activeSlotId;
     _selectedSceneId = s.activeSceneId;
-    _loadSlots();
+    _apiKey = TextEditingController();
+    _model = TextEditingController();
+    _endpoint = TextEditingController();
+    _loadProfileIntoFields();
+  }
+
+  /// Preenche os campos com o perfil salvo do provedor selecionado.
+  void _loadProfileIntoFields() {
+    final prof = AppSettings.I.profileFor(_provider);
+    _apiKey.text = prof.apiKey;
+    _endpoint.text = prof.customBaseUrl;
+    _model.text =
+        prof.model.isNotEmpty ? prof.model : AppSettings.providerConfigFor(_provider).defaultModel;
+    _models = [];
   }
 
   @override
   void dispose() {
+    _apiKey.dispose();
     _model.dispose();
     _endpoint.dispose();
     super.dispose();
   }
 
-  Future<void> _loadSlots() async {
-    final slots = await AppSettings.loadSlots();
-    if (mounted) setState(() => _slots = slots);
-  }
-
   void _switchProvider(AiProvider newProvider) {
     setState(() {
       _provider = newProvider;
-      final pc = AppSettings.providerConfigFor(newProvider);
-      _model.text = pc.defaultModel;
-      _models = [];
-      _selectedModel = null;
+      _loadProfileIntoFields();
     });
   }
 
   Future<void> _detectModels() async {
     final pc = AppSettings.providerConfigFor(_provider);
-    final apiKey = _currentApiKey();
+    final apiKey = _apiKey.text.trim();
+
     if (pc.requiresApiKey && apiKey.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cadastre uma API Key do ${pc.label} primeiro')),
+        SnackBar(content: Text('Digite a API Key do ${pc.label} primeiro')),
       );
       return;
     }
 
-    // Para provedor Custom, precisa do endpoint preenchido
     if (pc.requiresEndpoint && _endpoint.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Digite o endpoint (URL) do provedor primeiro')),
@@ -79,62 +79,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     setState(() => _loadingModels = true);
 
-    final models = await AppSettings.fetchModelsForProvider(
+    final models = await AppSettings.I.fetchModelsForProvider(
       _provider,
-      apiKey,
-      _endpoint.text.trim(),
+      apiKeyOverride: apiKey,
+      endpointOverride: _endpoint.text,
     );
 
-    setState(() {
-      _loadingModels = false;
-      _models = models;
-      _selectedModel = models.any((m) => m.key == _model.text) ? _model.text : null;
-    });
+    setState(() => _loadingModels = false);
 
     if (models.isEmpty && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_provider == AiProvider.openrouter
-            ? 'Não encontrei modelos gratuitos. Verifique a API Key.'
-            : pc.requiresEndpoint
-            ? 'Não encontrei modelos. Verifique a API Key e o endpoint do ${pc.label}.'
-            : 'Não encontrei modelos. Verifique a API Key do ${pc.label}.')),
+        SnackBar(
+          content: Text(_provider == AiProvider.openrouter
+              ? 'Não encontrei modelos gratuitos. Verifique a API Key.'
+              : pc.requiresEndpoint
+                  ? 'Não encontrei modelos. Verifique a API Key e o endpoint.'
+                  : 'Não encontrei modelos. Verifique a API Key do ${pc.label}.'),
+        ),
       );
+    } else {
+      setState(() => _models = models);
     }
-  }
-
-  String _currentApiKey() {
-    final slot = _slots.where((s) => s.id == _activeSlotId).firstOrNull;
-    return slot?.key ?? AppSettings.I.apiKey;
-  }
-
-  void _openSlotManager() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => _SlotManagerSheet(
-        slots: _slots,
-        activeSlotId: _activeSlotId,
-        provider: _provider,
-        onSaved: () async {
-          await _loadSlots();
-          if (ctx.mounted) Navigator.pop(ctx);
-        },
-      ),
-    );
   }
 
   Future<void> _save() async {
     final s = AppSettings.I;
+    final prof = s.profileFor(_provider);
+    prof.apiKey = _apiKey.text.trim();
+    prof.customBaseUrl = _endpoint.text.trim();
+    prof.model = _model.text.trim();
     s.provider = _provider;
-    s.model = _model.text.trim();
     s.temperature = _temp;
     s.maxTokens = _maxTokens;
-    s.activeSlotId = _activeSlotId;
     s.activeSceneId = _selectedSceneId;
-    s.customBaseUrl = _endpoint.text.trim();
-    // Atualiza apiKey do slot ativo
-    final slot = _slots.where((sl) => sl.id == _activeSlotId).firstOrNull;
-    if (slot != null) s.apiKey = slot.key;
     await s.save();
     if (mounted) Navigator.pop(context);
   }
@@ -142,9 +119,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final pc = AppSettings.providerConfigFor(_provider);
-    final showModelDetect = true;
-    final showSlotManager = pc.requiresApiKey;
-    final showEndpoint = pc.requiresEndpoint;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Configurações')),
@@ -163,7 +137,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     value: pc.provider,
                     groupValue: _provider,
                     title: Text(pc.label),
-                    subtitle: Text(pc.baseUrl, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                    subtitle: Text(
+                      pc.requiresEndpoint ? 'URL própria (OpenAI-compatible)' : pc.baseUrl,
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
                     onChanged: (v) => _switchProvider(v!),
                     dense: true,
                     contentPadding: EdgeInsets.zero,
@@ -173,7 +150,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 24),
 
               // === ENDPOINT (somente Custom) ===
-              if (showEndpoint) ...[
+              if (pc.requiresEndpoint) ...[
                 Text('Endpoint (URL)', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 12),
                 TextField(
@@ -188,50 +165,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 24),
               ],
 
-              // === API KEYS (SLOTS) ===
-              if (showSlotManager) ...[
-                Row(
-                  children: [
-                    Text('Chaves de API', style: Theme.of(context).textTheme.titleMedium),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.manage_accounts),
-                      tooltip: 'Gerenciar chaves',
-                      onPressed: _openSlotManager,
+              // === API KEY (campo direto, sempre do provedor selecionado) ===
+              if (pc.requiresApiKey) ...[
+                Text('API Key do ${pc.label}',
+                    style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _apiKey,
+                  obscureText: _obscureKey,
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.key),
+                    hintText: pc.hintApiKey,
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscureKey ? Icons.visibility_off : Icons.visibility),
+                      onPressed: () => setState(() => _obscureKey = !_obscureKey),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                if (_slots.isEmpty)
-                  Text('Nenhuma chave salva. Toque no ícone acima para adicionar.',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 13))
-                else
-                  DropdownButtonFormField<String>(
-
-                    menuMaxHeight: MediaQuery.of(context).size.height * 0.6,
-                    isExpanded: true,                    value: _slots.any((s) => s.id == _activeSlotId) ? _activeSlotId : null,
-                    decoration: const InputDecoration(
-                      labelText: 'Chave ativa',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.vpn_key),
-                    ),
-                    items: _slots.map((s) {
-                      return DropdownMenuItem(
-                        value: s.id,
-                        child: Text(s.label, overflow: TextOverflow.ellipsis),
-                      );
-                    }).toList(),
-                    onChanged: (v) => setState(() => _activeSlotId = v ?? ''),
                   ),
+                ),
                 const SizedBox(height: 24),
               ],
 
               // === MODELO ===
+              Text('Modelo', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 12),
               if (_models.isNotEmpty)
                 DropdownButtonFormField<String>(
-
-                    menuMaxHeight: MediaQuery.of(context).size.height * 0.6,
-                    isExpanded: true,                  value: _selectedModel,
+                  menuMaxHeight: MediaQuery.of(context).size.height * 0.6,
+                  isExpanded: true,
+                  value: _models.any((m) => m.key == _model.text) ? _model.text : null,
                   decoration: InputDecoration(
                     labelText: 'Modelo ${pc.label}',
                     border: const OutlineInputBorder(),
@@ -244,10 +206,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     );
                   }).toList(),
                   onChanged: (v) {
-                    if (v != null) setState(() {
-                      _selectedModel = v;
-                      _model.text = v;
-                    });
+                    if (v != null) setState(() => _model.text = v);
                   },
                 )
               else
@@ -260,28 +219,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     hintText: pc.defaultModel.isNotEmpty ? pc.defaultModel : 'ex: model-name',
                   ),
                 ),
-              if (showModelDetect) ...[
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _loadingModels ? null : _detectModels,
-                    icon: _loadingModels
-                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Icon(Icons.search),
-                    label: Text(_loadingModels ? 'Buscando modelos...' : 'Listar modelos disponíveis'),
-                  ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _loadingModels ? null : _detectModels,
+                  icon: _loadingModels
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.search),
+                  label: Text(_loadingModels ? 'Buscando modelos...' : 'Listar modelos disponíveis'),
                 ),
-              ],
+              ),
               const SizedBox(height: 24),
 
               // === CENARIO ===
               Text('Cenário de fundo', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-
-                    menuMaxHeight: MediaQuery.of(context).size.height * 0.6,
-                    isExpanded: true,                value: _selectedSceneId,
+                menuMaxHeight: MediaQuery.of(context).size.height * 0.6,
+                isExpanded: true,
+                value: _selectedSceneId,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.image),
@@ -356,157 +313,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-// === BOTTOM SHEET: GERENCIAR SLOTS DE API KEY ===
-
-class _SlotManagerSheet extends StatefulWidget {
-  final List<ApiKeySlot> slots;
-  final String activeSlotId;
-  final AiProvider provider;
-  final VoidCallback onSaved;
-
-  const _SlotManagerSheet({
-    required this.slots,
-    required this.activeSlotId,
-    required this.provider,
-    required this.onSaved,
-  });
-
-  @override
-  State<_SlotManagerSheet> createState() => _SlotManagerSheetState();
-}
-
-class _SlotManagerSheetState extends State<_SlotManagerSheet> {
-  late List<ApiKeySlot> _slots;
-
-  @override
-  void initState() {
-    super.initState();
-    _slots = List.from(widget.slots);
-  }
-
-  void _addOrEditSlot({ApiKeySlot? existing}) {
-    final nameCtrl = TextEditingController(text: existing?.label ?? '');
-    final keyCtrl = TextEditingController(text: existing?.key ?? '');
-    final isEdit = existing != null;
-    final pc = AppSettings.providerConfigFor(widget.provider);
-    final hint = 'Ex: ${pc.label} Principal, ${pc.label} Trabalho';
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(isEdit ? 'Editar chave' : 'Nova chave'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              decoration: InputDecoration(
-                labelText: 'Nome',
-                border: const OutlineInputBorder(),
-                hintText: hint,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: keyCtrl,
-              decoration: const InputDecoration(
-                labelText: 'API Key',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.key),
-              ),
-              obscureText: true,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
-          FilledButton(
-            onPressed: () async {
-              final label = nameCtrl.text.trim();
-              final key = keyCtrl.text.trim();
-              if (label.isEmpty || key.isEmpty) return;
-              final id = existing?.id ??
-                  DateTime.now().millisecondsSinceEpoch.toString();
-              await AppSettings.saveSlot(id, label, key);
-              if (ctx.mounted) Navigator.pop(ctx);
-              widget.onSaved();
-            },
-            child: const Text('Salvar'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-        left: 24,
-        right: 24,
-        top: 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Text('Chaves de API', style: Theme.of(context).textTheme.titleMedium),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (_slots.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Text('Nenhuma chave cadastrada.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey[600])),
-            )
-          else
-            ..._slots.map((slot) => Card(
-              child: ListTile(
-                leading: const Icon(Icons.vpn_key),
-                title: Text(slot.label),
-                subtitle: Text('${slot.key.substring(0, slot.key.length > 12 ? 12 : slot.key.length)}...',
-                    style: const TextStyle(fontSize: 11)),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit, size: 20),
-                      onPressed: () => _addOrEditSlot(existing: slot),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete, size: 20, color: Colors.red),
-                      onPressed: () async {
-                        await AppSettings.deleteSlot(slot.id);
-                        setState(() => _slots.removeWhere((s) => s.id == slot.id));
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            )),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: () => _addOrEditSlot(),
-            icon: const Icon(Icons.add),
-            label: const Padding(padding: EdgeInsets.all(14), child: Text('Adicionar chave')),
-          ),
-          const SizedBox(height: 24),
-        ],
       ),
     );
   }
