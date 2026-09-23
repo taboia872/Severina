@@ -372,7 +372,8 @@ Regras obrigatórias:
   }
 
   Future<void> reset() async {
-    await SharedPreferences.getInstance().clear();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
     profiles.clear();
   }
 }
